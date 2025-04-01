@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   signInWithPopup,
   GoogleAuthProvider,
@@ -10,6 +10,7 @@ import {
   type User,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { LogOut } from "lucide-react";
 
 interface LoginButtonProps {
   user: User | null;
@@ -18,10 +19,29 @@ interface LoginButtonProps {
 
 export function LoginButton({ user, loading }: LoginButtonProps) {
   const [showModal, setShowModal] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState("");
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
@@ -64,33 +84,73 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
 
   if (loading) {
     return (
-      <div className="animate-pulse rounded-md bg-gray-200 dark:bg-gray-700 h-10 w-28" />
+      <div
+        className="animate-pulse rounded-md bg-gray-200 dark:bg-gray-700 
+        h-10 w-10 sm:w-10"
+      />
     );
   }
 
   if (user) {
     return (
-      <div className="flex items-center gap-2 sm:gap-4">
-        {user.photoURL && (
-          <img
-            src={user.photoURL}
-            alt={user.displayName || ""}
-            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full"
-          />
-        )}
-        <span className="hidden sm:block text-gray-700 dark:text-gray-200">
-          {user.displayName || user.email}
-        </span>
+      <div className="relative" ref={dropdownRef}>
         <button
-          onClick={handleSignOut}
-          className="bg-red-500 dark:bg-red-600 text-white px-3 py-2 sm:px-4 
-            rounded-md text-sm sm:text-base hover:bg-red-600 
-            dark:hover:bg-red-700 transition-colors duration-150
-            focus:outline-none focus:ring-2 focus:ring-red-500 
-            dark:focus:ring-red-600 focus:ring-offset-2"
+          onClick={() => setShowDropdown(!showDropdown)}
+          className="flex items-center gap-2 focus:outline-none"
         >
-          Logout
+          {user.photoURL ? (
+            <img
+              src={user.photoURL}
+              alt={user.displayName || ""}
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full ring-2 
+                ring-transparent hover:ring-blue-500 dark:hover:ring-blue-400 
+                transition-all duration-200"
+            />
+          ) : (
+            <div
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-500 
+              dark:bg-blue-600 text-white flex items-center justify-center 
+              text-lg font-semibold ring-2 ring-transparent 
+              hover:ring-blue-500 dark:hover:ring-blue-400 
+              transition-all duration-200"
+            >
+              {(user.displayName || user.email || "U")[0].toUpperCase()}
+            </div>
+          )}
         </button>
+
+        {showDropdown && (
+          <div
+            className="absolute right-0 mt-2 w-48 rounded-md shadow-lg 
+            bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5"
+          >
+            <div className="py-1">
+              <div
+                className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 
+                border-b border-gray-200 dark:border-gray-700"
+              >
+                <p className="font-medium truncate">
+                  {user.displayName || user.email}
+                </p>
+                {user.displayName && (
+                  <p className="text-gray-500 dark:text-gray-400 text-xs truncate">
+                    {user.email}
+                  </p>
+                )}
+              </div>
+
+              <button
+                onClick={handleSignOut}
+                className="w-full text-left px-4 py-2 text-sm text-red-600 
+                  dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 
+                  flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                ログアウト
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -8,22 +8,31 @@ import { ImageAnnotation } from "@annotorious/annotorious";
 export function convertMultipleAnnotations(
   annotationsArray: AnnotationWidthSingleBody[]
 ): ImageAnnotation[] {
-  return annotationsArray.map((selectors) => {
-    const result: AnnotationWidthSingleBody = {
-      id: selectors.id,
-      motivation: selectors.motivation,
-      type: selectors.type,
-      body: {
-        type: selectors.body.type,
-        value: selectors.body.value || "",
-      },
-      target: {
-        selector: selectors.target.selector.reverse(),
-        source: selectors.target.source,
-      },
-    };
-    return result as unknown as ImageAnnotation;
-  });
+  return annotationsArray
+    .map((selectors) => {
+      if (!selectors.target.selector) {
+        return null;
+      }
+      const selectorText = JSON.stringify(selectors.target.selector);
+      if (selectorText.includes("xywh=0,0,0,0")) {
+        return null;
+      }
+      const result: AnnotationWidthSingleBody = {
+        id: selectors.id,
+        motivation: selectors.motivation,
+        type: selectors.type,
+        body: {
+          type: selectors.body.type,
+          value: selectors.body.value || "",
+        },
+        target: {
+          selector: selectors.target.selector.reverse(),
+          source: selectors.target.source,
+        },
+      };
+      return result as unknown as ImageAnnotation;
+    })
+    .filter((annotation) => annotation !== null);
 }
 
 /* ImageAnnotation | */
