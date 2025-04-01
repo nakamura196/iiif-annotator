@@ -252,12 +252,26 @@ function App() {
 
   // ローディング表示
   if (isLoading) {
-    return <div>Loading manifest...</div>;
+    return (
+      <div
+        className="flex items-center justify-center h-screen 
+        bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+      >
+        Loading manifest...
+      </div>
+    );
   }
 
   // infoUrls が空の場合
   if (infoUrls.length === 0) {
-    return <div>No images found in manifest</div>;
+    return (
+      <div
+        className="flex items-center justify-center h-screen 
+        bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+      >
+        No images found in manifest
+      </div>
+    );
   }
 
   const getViewerOptions = (infoUrls: string[]) => ({
@@ -273,11 +287,23 @@ function App() {
   });
 
   return (
-    <div className="flex flex-1 h-full">
-      <div className="w-1/4 border-r flex flex-col">
-        <div className="p-4 border-b sticky top-0 bg-white z-10">
-          <h2 className="text-xl font-bold">Annotations</h2>
-          <p className="text-sm text-gray-600 mt-1">
+    <div
+      className="flex flex-col lg:flex-row flex-1 h-full 
+      bg-white dark:bg-gray-900"
+    >
+      {/* サイドバー（アノテーションリスト） */}
+      <div
+        className="w-full lg:w-1/4 border-b lg:border-b-0 lg:border-r 
+        border-gray-200 dark:border-gray-700 flex flex-col"
+      >
+        <div
+          className="p-4 border-b border-gray-200 dark:border-gray-700 
+          sticky top-0 bg-white dark:bg-gray-900 z-10"
+        >
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            Annotations
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Page: {currentPage + 1} of {infoUrls.length}
           </p>
         </div>
@@ -294,7 +320,8 @@ function App() {
         </div>
       </div>
 
-      <div className="w-2/4 flex flex-col">
+      {/* メインビューア */}
+      <div className="w-full lg:w-2/4 h-[50vh] lg:h-auto flex flex-col">
         <Viewer
           tool={tool}
           infoUrls={infoUrls}
@@ -302,7 +329,11 @@ function App() {
         />
       </div>
 
-      <div className="w-1/4 border-l overflow-y-auto">
+      {/* 右サイドバー（ツールバーとフォーム） */}
+      <div
+        className="w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l 
+        border-gray-200 dark:border-gray-700 overflow-y-auto"
+      >
         <ToolBar tool={tool} setTool={setTool} />
         <AnnotationForm
           id={selectedAnnotationId || ""}

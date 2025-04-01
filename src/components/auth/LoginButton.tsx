@@ -63,23 +63,31 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="animate-pulse rounded-md bg-gray-200 dark:bg-gray-700 h-10 w-28" />
+    );
   }
 
   if (user) {
     return (
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         {user.photoURL && (
           <img
             src={user.photoURL}
             alt={user.displayName || ""}
-            className="w-8 h-8 rounded-full"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full"
           />
         )}
-        <span>{user.displayName || user.email}</span>
+        <span className="hidden sm:block text-gray-700 dark:text-gray-200">
+          {user.displayName || user.email}
+        </span>
         <button
           onClick={handleSignOut}
-          className="bg-red-500 text-white px-4 py-2 rounded cursor-pointer hover:bg-red-600 transition-colors duration-150"
+          className="bg-red-500 dark:bg-red-600 text-white px-3 py-2 sm:px-4 
+            rounded-md text-sm sm:text-base hover:bg-red-600 
+            dark:hover:bg-red-700 transition-colors duration-150
+            focus:outline-none focus:ring-2 focus:ring-red-500 
+            dark:focus:ring-red-600 focus:ring-offset-2"
         >
           Logout
         </button>
@@ -91,48 +99,72 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
     <>
       <button
         onClick={() => setShowModal(true)}
-        className="bg-blue-500 text-white px-4 py-2 rounded cursor-pointer hover:bg-blue-600 transition-colors duration-150"
+        className="bg-blue-500 dark:bg-blue-600 text-white px-3 py-2 sm:px-4 
+          rounded-md text-sm sm:text-base hover:bg-blue-600 
+          dark:hover:bg-blue-700 transition-colors duration-150
+          focus:outline-none focus:ring-2 focus:ring-blue-500 
+          dark:focus:ring-blue-600 focus:ring-offset-2"
       >
         Login
       </button>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-96 relative">
-            <h2 className="text-xl font-bold mb-4">
+        <div
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 
+          flex items-center justify-center z-50 p-4"
+        >
+          <div
+            className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full 
+            max-w-md relative"
+          >
+            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
               {isSignUp ? "アカウント作成" : "ログイン"}
             </h2>
 
             {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              <div
+                className="bg-red-100 dark:bg-red-900/30 border 
+                border-red-400 dark:border-red-800 text-red-700 
+                dark:text-red-400 px-4 py-3 rounded mb-4"
+              >
                 {error}
               </div>
             )}
 
             <form onSubmit={handleEmailAuth} className="space-y-4">
               <div>
-                <label className="block mb-2">メールアドレス</label>
+                <label className="block mb-2 text-gray-700 dark:text-gray-200">
+                  メールアドレス
+                </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded-md bg-white 
+                    dark:bg-gray-700 border-gray-300 dark:border-gray-600
+                    text-gray-900 dark:text-white"
                   required
                 />
               </div>
               <div>
-                <label className="block mb-2">パスワード</label>
+                <label className="block mb-2 text-gray-700 dark:text-gray-200">
+                  パスワード
+                </label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded-md bg-white 
+                    dark:bg-gray-700 border-gray-300 dark:border-gray-600
+                    text-gray-900 dark:text-white"
                   required
                 />
               </div>
               <button
                 type="submit"
-                className="w-full bg-blue-500 text-white px-4 py-2 rounded cursor-pointer hover:bg-blue-600 transition-colors duration-150"
+                className="w-full bg-blue-500 dark:bg-blue-600 text-white 
+                  px-4 py-2 rounded-md hover:bg-blue-600 
+                  dark:hover:bg-blue-700 transition-colors duration-150"
               >
                 {isSignUp ? "アカウント作成" : "ログイン"}
               </button>
@@ -140,7 +172,10 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
 
             <button
               onClick={signInWithGoogle}
-              className="w-full mt-4 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50 flex items-center justify-center"
+              className="w-full mt-4 bg-white dark:bg-gray-700 border 
+                border-gray-300 dark:border-gray-600 text-gray-700 
+                dark:text-gray-200 px-4 py-2 rounded-md hover:bg-gray-50 
+                dark:hover:bg-gray-600 flex items-center justify-center"
             >
               <img
                 src="https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png"
@@ -152,14 +187,16 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
 
             <button
               onClick={() => setIsSignUp(!isSignUp)}
-              className="w-full mt-4 text-blue-500 hover:text-blue-600"
+              className="w-full mt-4 text-blue-500 dark:text-blue-400 
+                hover:text-blue-600 dark:hover:text-blue-500"
             >
               {isSignUp ? "既存のアカウントでログイン" : "新規アカウント作成"}
             </button>
 
             <button
               onClick={() => setShowModal(false)}
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+              className="absolute top-2 right-2 text-gray-500 dark:text-gray-400 
+                hover:text-gray-700 dark:hover:text-gray-200"
             >
               ✕
             </button>
