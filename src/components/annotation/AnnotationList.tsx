@@ -20,7 +20,7 @@ export function AnnotationList({
     <div className="flex flex-col h-full">
       <div
         className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 dark:bg-gray-800 
-            border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10"
+            border-b border-gray-200 dark:border-gray-700"
       >
         <p
           className="text-sm sm:text-base font-medium text-gray-900 

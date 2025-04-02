@@ -299,10 +299,7 @@ function App() {
         className="w-full lg:w-1/4 border-b lg:border-b-0 lg:border-r 
         border-gray-200 dark:border-gray-700 flex flex-col"
       >
-        <div
-          className="p-4 border-b border-gray-200 dark:border-gray-700 
-          sticky top-0 bg-white dark:bg-gray-900 z-10"
-        >
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">

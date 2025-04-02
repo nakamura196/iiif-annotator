@@ -36,6 +36,29 @@ export function ManifestUrlForm() {
           <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
             マニフェストURLを入力してください
           </p>
+          <div className="mt-2 flex justify-center">
+            <button
+              type="button"
+              onClick={() =>
+                setUrl(
+                  "https://da.dl.itc.u-tokyo.ac.jp/portal/repo/iiif/fbd0479b-dbb4-4eaa-95b8-f27e1c423e4b/manifest"
+                )
+              }
+              className="text-sm text-blue-600 dark:text-blue-400 
+                hover:text-blue-800 dark:hover:text-blue-300 
+                underline inline-flex items-center gap-1"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
+              </svg>
+              入力例を使用
+            </button>
+          </div>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
