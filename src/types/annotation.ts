@@ -48,16 +48,3 @@ export interface AnnotationWithMultipleBodies extends Annotation {
     value: string;
   }[]; // []
 }
-
-export interface Canvas2 {
-  "@id": string;
-  images: Image[];
-}
-
-export interface Image {
-  resource: {
-    service: {
-      "@id": string;
-    };
-  };
-}

@@ -13,6 +13,8 @@
     "@annotorious/openseadragon": "^3.3.3",
     "@annotorious/react": "^3.3.3",
     "@ckeditor/ckeditor5-react": "^9.5.0",
+    "@iiif/parser": "^2.1.7",
+    "@iiif/presentation-3": "^2.2.3",
     "ckeditor5": "^44.3.0",
     "ckeditor5-premium-features": "^44.3.0",
     "firebase": "^11.5.0",

@@ -24,9 +24,10 @@ import {
   Annotation,
   AnnotationWidthSingleBody,
   AnnotationWithMultipleBodies,
-  Canvas2,
 } from "@/types/annotation";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { convertPresentation2 } from "@iiif/parser/presentation-2";
+import { Canvas } from "@iiif/presentation-3";
 
 // コンポーネントの動的インポート
 const DynamicAnnotorious = dynamic(
@@ -41,13 +42,13 @@ function App() {
   const [infoUrls, setInfoUrls] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tool, setTool] = useState<"rectangle" | "polygon" | undefined>();
-  const [, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [adapter, setAdapter] = useState<FirestoreAnnotationAdapter | null>(
     null
   );
 
   const [currentPage, setCurrentPage] = useState(-1);
-  const [canvases, setCanvases] = useState<Canvas2[]>([]);
+  const [canvases, setCanvases] = useState<Canvas[]>([]);
 
   const [results, setResults] = useState<Annotation[]>([]);
 
@@ -63,22 +64,10 @@ function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      // ログイン状態が変わったら、アダプターを再初期化
-      if (canvases.length > 0) {
-        const canvasId = canvases[currentPage]?.["@id"];
-        const manifestUrl = searchParams.get("manifest");
-        if (canvasId && manifestUrl) {
-          const newAdapter = new FirestoreAnnotationAdapter(
-            canvasId,
-            manifestUrl
-          );
-          setAdapter(newAdapter);
-        }
-      }
     });
 
     return () => unsubscribe();
-  }, [canvases, currentPage, searchParams]);
+  }, []);
 
   // マニフェストの取得とアダプターの初期化
   useEffect(() => {
@@ -88,13 +77,21 @@ function App() {
         if (!manifestUrl) return;
 
         const response = await fetch(manifestUrl);
-        const manifest = await response.json();
+        let manifest = await response.json();
 
-        const canvases = manifest.sequences?.[0]?.canvases || [];
+        const context = manifest["@context"];
+        if (context && context.includes("presentation/2")) {
+          manifest = convertPresentation2(manifest);
+        }
+
+        const canvases = manifest.items; // .sequences?.[0]?.canvases || [];
         setCanvases(canvases);
 
-        const urls = canvases.map((canvas: Canvas2) => {
-          const image = canvas.images?.[0]?.resource?.service?.["@id"];
+        const urls = canvases.map((canvas: Canvas) => {
+          const body = canvas.items?.[0]?.items?.[0]?.body as {
+            service: { "@id": string }[];
+          };
+          const image = body?.service?.[0]?.["@id"];
           return `${image}/info.json`;
         });
 
@@ -120,7 +117,7 @@ function App() {
     if (!anno) return;
     if (currentPage === -1) return;
 
-    const canvasId = canvases[currentPage]?.["@id"];
+    const canvasId = canvases[currentPage]?.["id"];
 
     const newAdapter = new FirestoreAnnotationAdapter(canvasId, manifestUrl);
     setAdapter(newAdapter);
@@ -138,7 +135,7 @@ function App() {
       anno.setAnnotations(annotoriousAnnotations);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anno, currentPage]);
+  }, [anno, currentPage, user]);
 
   // ページ変更ハンドラーをメモ化
   const handlePageChange = useCallback(async (event: { page: number }) => {
@@ -207,7 +204,7 @@ function App() {
 
     const ex = results.find((r) => r.id === updatedAnnotation.id) as Annotation;
 
-    const canvasId = canvases[currentPage]?.["@id"];
+    const canvasId = canvases[currentPage]?.["id"];
     const manifestUrl = searchParams.get("manifest") || "";
 
     const iiifAnnotation = convertAnnotoriousToIIIF(
@@ -279,6 +276,19 @@ function App() {
     initialPage: currentPage,
   });
 
+  const exportAnnotations = async () => {
+    if (!adapter) return;
+    const annotations = await adapter.export();
+    const json = JSON.stringify(annotations);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const now = new Date().toISOString().replace(/[-:Z]/g, "");
+    a.download = `annotations-${now}.json`;
+    a.click();
+  };
+
   return (
     <div
       className="flex flex-col lg:flex-row flex-1 h-full 
@@ -293,12 +303,38 @@ function App() {
           className="p-4 border-b border-gray-200 dark:border-gray-700 
           sticky top-0 bg-white dark:bg-gray-900 z-10"
         >
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            Annotations
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Page: {currentPage + 1} of {infoUrls.length}
-          </p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Annotations
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Page: {currentPage + 1} of {infoUrls.length}
+              </p>
+            </div>
+            <button
+              onClick={exportAnnotations}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-md
+                bg-blue-600 hover:bg-blue-700 
+                dark:bg-blue-500 dark:hover:bg-blue-600
+                text-white text-sm font-medium
+                transition-colors duration-200"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              エクスポート
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
           <AnnotationList

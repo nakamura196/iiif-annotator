@@ -174,4 +174,33 @@ export default class FirestoreAnnotationAdapter {
       type: "AnnotationPage",
     };
   }
+
+  /** Returns an AnnotationPage with all annotations */
+  async export() {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) {
+      return {
+        // id: this.annotationPageId,
+        items: [],
+        type: "AnnotationPage",
+      };
+    }
+
+    const q = query(
+      this.collectionRef,
+      // where("canvasId", "==", this.canvasId),
+      where("manifestId", "==", this.manifestId),
+      where("userId", "==", user.uid)
+    );
+
+    const querySnapshot = await getDocs(q);
+    const annotations = querySnapshot.docs.map((snapshot) => snapshot.data());
+
+    return {
+      // id: this.annotationPageId,
+      items: annotations,
+      type: "AnnotationPage",
+    };
+  }
 }
