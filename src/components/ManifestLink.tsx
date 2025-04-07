@@ -1,17 +1,22 @@
 "use client";
-import Link from "next/link";
-export default function ManifestLink() {
-  const hasManifest =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("manifest");
 
-  if (!hasManifest) return null;
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+
+function ManifestLinkContent() {
+  const searchParams = useSearchParams();
+  const manifest = searchParams.get("manifest");
+
+  if (!manifest) {
+    return null;
+  }
+
+  const url = `https://mirador-annotations.vercel.app/?manifest=${manifest}`;
 
   return (
     <Link
-      href={`https://mirador-annotations.vercel.app/?manifest=${new URLSearchParams(
-        window.location.search
-      ).get("manifest")}`}
+      href={url}
       className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
       target="_blank"
       rel="noopener noreferrer"
@@ -27,5 +32,13 @@ export default function ManifestLink() {
         <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
       </svg>
     </Link>
+  );
+}
+
+export default function ManifestLink() {
+  return (
+    <Suspense fallback={null}>
+      <ManifestLinkContent />
+    </Suspense>
   );
 }

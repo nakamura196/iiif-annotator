@@ -28,7 +28,7 @@ import {
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { convertPresentation2 } from "@iiif/parser/presentation-2";
 import { Canvas } from "@iiif/presentation-3";
-
+import { Export } from "@/components/export";
 // コンポーネントの動的インポート
 const DynamicAnnotorious = dynamic(
   () => import("@annotorious/react").then((mod) => mod.Annotorious),
@@ -276,19 +276,6 @@ function App() {
     initialPage: currentPage,
   });
 
-  const exportAnnotations = async () => {
-    if (!adapter) return;
-    const annotations = await adapter.export();
-    const json = JSON.stringify(annotations);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const now = new Date().toISOString().replace(/[-:Z]/g, "");
-    a.download = `annotations-${now}.json`;
-    a.click();
-  };
-
   return (
     <div
       className="flex flex-col lg:flex-row flex-1 h-full 
@@ -309,28 +296,7 @@ function App() {
                 Page: {currentPage + 1} of {infoUrls.length}
               </p>
             </div>
-            <button
-              onClick={exportAnnotations}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-md
-                bg-blue-600 hover:bg-blue-700 
-                dark:bg-blue-500 dark:hover:bg-blue-600
-                text-white text-sm font-medium
-                transition-colors duration-200"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              エクスポート
-            </button>
+            <Export adapter={adapter} />
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -348,11 +314,7 @@ function App() {
 
       {/* メインビューア */}
       <div className="w-full lg:w-2/4 h-[50vh] lg:h-auto flex flex-col">
-        <Viewer
-          tool={tool}
-          infoUrls={infoUrls}
-          options={getViewerOptions(infoUrls)}
-        />
+        <Viewer tool={tool} options={getViewerOptions(infoUrls)} />
       </div>
 
       {/* 右サイドバー（ツールバーとフォーム） */}

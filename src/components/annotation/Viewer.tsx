@@ -13,7 +13,6 @@ const DynamicOpenSeadragonViewer = dynamic(
 
 interface ViewerProps {
   tool: "rectangle" | "polygon" | undefined;
-  infoUrls: string[];
   options: OpenSeadragon.Options;
 }
 

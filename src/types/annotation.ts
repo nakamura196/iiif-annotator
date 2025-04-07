@@ -6,18 +6,8 @@ export interface Annotation {
   modified?: Timestamp;
   motivation: string;
   type: string;
-  /*
-    body:
-      | {
-          type: string;
-          value: string;
-        }
-      | {
-          type: string;
-          value: string;
-        }[];
-      */
-
+  manifestId?: string;
+  canvasId?: string;
   target: {
     selector: {
       type: string;
