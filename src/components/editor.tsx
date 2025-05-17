@@ -89,10 +89,22 @@ function App() {
 
         const urls = canvases.map((canvas: Canvas) => {
           const body = canvas.items?.[0]?.items?.[0]?.body as {
+            id: string;
             service: { "@id": string }[];
           };
-          const image = body?.service?.[0]?.["@id"];
-          return `${image}/info.json`;
+          // console.log({ body });
+          let image: string | { type: string; url: string } = "";
+          if (body.service) {
+            image = body.service[0]["@id"];
+          } else if (body.id) {
+            image = {
+              type: "image",
+              url: body["id"],
+            };
+          }
+          // const image = body?.service?.[0]?.["@id"];
+          // return `${image}/info.json`;
+          return image;
         });
 
         setInfoUrls(urls);
