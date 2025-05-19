@@ -2,7 +2,10 @@ import { Zone } from "@/types/zone";
 
 interface SurfaceData {
   canvas: string;
-  image: string;
+  image: {
+    url: string;
+    sameAs: string | null;
+  };
   zones: Zone[];
 }
 
@@ -55,8 +58,12 @@ export function createSurfaceElement(
   surface.setAttribute("sameAs", data.canvas);
 
   const graphic = doc.createElementNS("http://www.tei-c.org/ns/1.0", "graphic");
-  graphic.setAttribute("url", data.image + "/full/full/0/default.jpg");
-  graphic.setAttribute("sameAs", data.image);
+  // graphic.setAttribute("url", data.image + "/full/full/0/default.jpg");
+  graphic.setAttribute("url", data.image.url);
+
+  if (data.image.sameAs) {
+    graphic.setAttribute("sameAs", data.image.sameAs);
+  }
   surface.appendChild(graphic);
 
   for (const item of data.zones) {

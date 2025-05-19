@@ -5,7 +5,16 @@ import type { Zone } from "@/types/zone";
 
 export async function createMappings(
   annotations: AnnotationWidthSingleBody[]
-): Promise<[string, { canvas: string; image: string; zones: Zone[] }[]]> {
+): Promise<
+  [
+    string,
+    {
+      canvas: string;
+      image: { url: string; sameAs: string | null };
+      zones: Zone[];
+    }[]
+  ]
+> {
   if (annotations.length === 0) return ["", []];
 
   const manifestId = annotations[0].manifestId;
@@ -27,18 +36,33 @@ async function fetchAndNormalizeManifest(manifestId: string) {
 }
 
 function createCanvasMapping(manifest: Manifest) {
-  const mapping: Record<string, { id: string; image: string }> = {};
+  const mapping: Record<
+    string,
+    { id: string; image: { url: string; sameAs: string | null } }
+  > = {};
 
   for (const canvas of manifest.items) {
     const body = canvas.items?.[0]?.items?.[0]?.body as {
+      id: string;
       service: { "@id": string }[];
     };
-    const imageService = body?.service?.[0]?.["@id"];
-    if (!imageService) continue;
+
+    let url = null;
+    let sameAs = null;
+    if (body?.service?.[0]?.["@id"]) {
+      const imageService = body?.service?.[0]?.["@id"];
+      url = imageService + "/full/full/0/default.jpg";
+      sameAs = imageService;
+    } else {
+      url = body.id;
+    }
 
     mapping[canvas.id] = {
       id: canvas.id,
-      image: imageService,
+      image: {
+        url,
+        sameAs,
+      },
     };
   }
 
@@ -47,7 +71,10 @@ function createCanvasMapping(manifest: Manifest) {
 
 function createZonesByCanvas(
   annotations: AnnotationWidthSingleBody[],
-  canvasMapping: Record<string, { id: string; image: string }>
+  canvasMapping: Record<
+    string,
+    { id: string; image: { url: string; sameAs: string | null } }
+  >
 ) {
   const zonesByCanvas: Record<string, Zone[]> = {};
 
@@ -121,7 +148,10 @@ function stripHtml(html: string): string {
 
 function formatResults(
   zonesByCanvas: Record<string, Zone[]>,
-  canvasMapping: Record<string, { id: string; image: string }>
+  canvasMapping: Record<
+    string,
+    { id: string; image: { url: string; sameAs: string | null } }
+  >
 ) {
   return Object.entries(zonesByCanvas)
     .filter(([, zones]) => zones.length > 0)
