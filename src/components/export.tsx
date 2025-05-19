@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import FirestoreAnnotationAdapter from "@/lib/FirestoreAnnotationAdapter";
 import { createTEI } from "@/lib/utils/export/tei/createTEI";
 import { AnnotationWidthSingleBody } from "@/types/annotation";
+import { createManifest } from "@/lib/utils/export/manifest/createManifest";
 export const Export = ({
   adapter,
 }: {
@@ -22,13 +23,16 @@ export const Export = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const exportAnnotations = async (format: "json" | "csv" | "tei") => {
+  const exportAnnotations = async (
+    format: "json" | "csv" | "tei" | "manifest"
+  ) => {
     if (!adapter) return;
     const annotations = await adapter.export();
 
     let content: string;
     let mimeType: string;
     let extension: string;
+    let fileName: string;
 
     switch (format) {
       case "csv":
@@ -37,6 +41,7 @@ export const Export = ({
           .join("\n");
         mimeType = "text/csv";
         extension = "csv";
+        fileName = "annotation-csv";
         break;
       case "tei":
         content = await createTEI(
@@ -44,11 +49,21 @@ export const Export = ({
         );
         mimeType = "application/xml";
         extension = "xml";
+        fileName = "annotation-tei";
+        break;
+      case "manifest":
+        content = await createManifest(
+          annotations.items as AnnotationWidthSingleBody[]
+        );
+        mimeType = "application/json";
+        extension = "json";
+        fileName = "annotation-manifest";
         break;
       default:
         content = JSON.stringify(annotations["items"], null, 2);
         mimeType = "application/json";
         extension = "json";
+        fileName = "annotation-json";
     }
 
     const blob = new Blob([content], { type: mimeType });
@@ -56,7 +71,7 @@ export const Export = ({
     const a = document.createElement("a");
     a.href = url;
     const now = new Date().toISOString().replace(/[-:Z]/g, "");
-    a.download = `annotations-${now}.${extension}`;
+    a.download = `${fileName}-${now}.${extension}`;
     a.click();
     URL.revokeObjectURL(url);
     setIsOpen(false);
@@ -94,12 +109,12 @@ export const Export = ({
         >
           <div className="py-1" role="menu">
             <button
-              onClick={() => exportAnnotations("json")}
+              onClick={() => exportAnnotations("manifest")}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 
                 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
               role="menuitem"
             >
-              JSON形式でダウンロード
+              IIIFマニフェストファイル形式でダウンロード
             </button>
             <button
               onClick={() => exportAnnotations("tei")}
@@ -108,6 +123,14 @@ export const Export = ({
               role="menuitem"
             >
               TEI/XML形式でダウンロード
+            </button>
+            <button
+              onClick={() => exportAnnotations("json")}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 
+                hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+              role="menuitem"
+            >
+              JSON形式でダウンロード
             </button>
             {/*
             <button

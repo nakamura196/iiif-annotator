@@ -87,27 +87,31 @@ function App() {
         const canvases = manifest.items; // .sequences?.[0]?.canvases || [];
         setCanvases(canvases);
 
-        const urls = canvases.map((canvas: Canvas) => {
-          const body = canvas.items?.[0]?.items?.[0]?.body as {
-            id: string;
-            service: { "@id": string }[];
-          };
-          // console.log({ body });
-          let image: string | { type: string; url: string } = "";
-          if (body.service) {
-            image = body.service[0]["@id"];
-          } else if (body.id) {
-            image = {
-              type: "image",
-              url: body["id"],
+        const tileSources = canvases
+          .map((canvas: Canvas) => {
+            const annotationPage = canvas.items?.[0];
+            const annotation = annotationPage?.items?.[0];
+            if (!annotation) return null;
+            const body = annotation.body as {
+              id: string;
+              service?: { "@id": string }[];
             };
-          }
-          // const image = body?.service?.[0]?.["@id"];
-          // return `${image}/info.json`;
-          return image;
-        });
 
-        setInfoUrls(urls);
+            if (body.service && body.service.length > 0) {
+              return body.service[0]["@id"] + "/info.json";
+            } else {
+              return {
+                type: "image",
+                url: body.id,
+              };
+            }
+          })
+          .filter(
+            (tileSource: string | { type: string; url: string } | null) =>
+              tileSource !== null
+          );
+
+        setInfoUrls(tileSources);
 
         const pos = Number(searchParams.get("pos") || 1);
         const initialPage = Math.max(0, pos - 1);
