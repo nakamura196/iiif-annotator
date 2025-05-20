@@ -5,21 +5,13 @@ export const createManifest = async (
   annotations: AnnotationWidthSingleBody[]
 ) => {
   if (annotations.length === 0) {
-    return null;
+    return "{}";
   }
-
-  const firstAnnotation = annotations[0];
-
-  console.log({ firstAnnotation });
 
   const manifestUri = annotations[0].manifestId || "";
 
-  console.log({ manifestUri });
-
   const r = await fetch(manifestUri);
   let manifestData = await r.json();
-
-  console.log({ manifestData });
 
   const context = manifestData["@context"];
 
@@ -33,8 +25,6 @@ export const createManifest = async (
 
   for (const canvas of canvases) {
     const canvasId = canvas.id;
-    // const canvasData = await fetch(canvasId).then((res) => res.json());
-    // console.log({ canvasData });
 
     const canvasAnnotations = annotations.filter(
       (annotation) => annotation.canvasId === canvasId
@@ -42,11 +32,11 @@ export const createManifest = async (
 
     canvas.annotations = [
       {
-        id: "",
+        id: canvasId + "/annotations",
         type: "AnnotationPage",
         items: canvasAnnotations.map((annotation) => {
           return {
-            id: annotation.id,
+            id: canvasId + "/annotations/" + annotation.id,
             type: "Annotation",
             motivation: annotation.motivation,
             body: annotation.body,
@@ -55,8 +45,6 @@ export const createManifest = async (
         }),
       },
     ];
-
-    console.log({ canvasAnnotations });
   }
 
   return JSON.stringify(manifestData, null, 2);
