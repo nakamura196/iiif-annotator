@@ -15,9 +15,44 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const title = "IIIF Annotator";
+const description = "Annotate IIIF images with Annotorious v3";
+const url = "https://iiif-annotator.vercel.app";
+const imageUrl = "https://iiif-annotator.vercel.app/ogp.webp";
+const twitter = "@nsatoru196";
+
 export const metadata: Metadata = {
-  title: "IIIF Annotator",
-  description: "Annotate IIIF images",
+  metadataBase: new URL(url),
+  title: title,
+  description: description,
+  keywords: [
+    "IIIF",
+    "TEI",
+    "XML",
+    "Next.js",
+    "Vercel",
+    "Annotorious",
+    "Firebase",
+  ],
+  authors: [
+    { name: "Satoru Nakamura", url: "https://researchmap.jp/nakamura.satoru" },
+  ],
+  openGraph: {
+    title: title,
+    description: description,
+    url: url,
+    type: "website",
+    siteName: title,
+    images: imageUrl,
+  },
+  twitter: {
+    card: "summary",
+    site: twitter,
+    creator: twitter,
+    title: title,
+    description: description,
+    images: imageUrl,
+  },
 };
 
 export default function RootLayout({

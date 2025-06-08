@@ -1,5 +1,5 @@
 {
-  "name": "anno",
+  "name": "next-fb-anno",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,32 +9,32 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@annotorious/annotorious": "^3.3.3",
-    "@annotorious/openseadragon": "^3.3.3",
-    "@annotorious/react": "^3.3.3",
+    "@annotorious/annotorious": "^3.4.3",
+    "@annotorious/openseadragon": "^3.4.3",
+    "@annotorious/react": "^3.4.3",
     "@ckeditor/ckeditor5-react": "^9.5.0",
-    "@iiif/parser": "^2.1.7",
+    "@iiif/parser": "^2.2.0",
     "@iiif/presentation-3": "^2.2.3",
-    "ckeditor5": "^44.3.0",
-    "ckeditor5-premium-features": "^44.3.0",
-    "firebase": "^11.5.0",
-    "lucide-react": "^0.485.0",
-    "next": "15.2.4",
+    "ckeditor5": "^45.2.0",
+    "ckeditor5-premium-features": "^45.2.0",
+    "firebase": "^11.9.0",
+    "lucide-react": "^0.513.0",
+    "next": "15.3.3",
     "next-themes": "^0.4.6",
     "openseadragon": "^5.0.1",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "xml-formatter": "^3.6.5"
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "xml-formatter": "^3.6.6"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/openseadragon": "^3.0.10",
+    "@types/node": "^22",
+    "@types/openseadragon": "^4.1.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.2.4",
+    "eslint-config-next": "15.3.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
