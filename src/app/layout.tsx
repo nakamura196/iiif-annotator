@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 
 const title = "IIIF Annotator";
 const description = "Annotate IIIF images with Annotorious v3";
-const url = "https://iiif-annotator.vercel.app";
-const imageUrl = "https://iiif-annotator.vercel.app/ogp.webp";
+const url = "https://next-fb-anno.vercel.app";
+const imageUrl = `${url}/ogp.webp`;
 const twitter = "@nsatoru196";
 
 export const metadata: Metadata = {
