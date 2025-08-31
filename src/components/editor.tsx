@@ -30,6 +30,8 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { convertPresentation2 } from "@iiif/parser/presentation-2";
 import { Canvas } from "@iiif/presentation-3";
 import { Export } from "@/components/export";
+import { ManifestViewer } from "@/components/ManifestViewer";
+import { FileJson } from "lucide-react";
 // コンポーネントの動的インポート
 const DynamicAnnotorious = dynamic(
   () => import("@annotorious/react").then((mod) => mod.Annotorious),
@@ -57,6 +59,8 @@ function App() {
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<
     string | null
   >(null);
+
+  const [isManifestViewerOpen, setIsManifestViewerOpen] = useState(false);
 
   const anno = useAnnotator<AnnotoriousOpenSeadragonAnnotator>();
 
@@ -314,7 +318,17 @@ function App() {
                 {t('page', { current: currentPage + 1, total: infoUrls.length })}
               </p>
             </div>
-            <Export adapter={adapter} />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsManifestViewerOpen(true)}
+                className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 
+                  dark:hover:text-gray-100 transition-colors"
+                title="View IIIF Manifest"
+              >
+                <FileJson className="h-5 w-5" />
+              </button>
+              <Export adapter={adapter} />
+            </div>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -353,6 +367,15 @@ function App() {
           onDelete={handleDelete}
         />
       </div>
+      
+      {/* Manifest Viewer Modal */}
+      {manifestUrl && (
+        <ManifestViewer
+          manifestUrl={manifestUrl}
+          isOpen={isManifestViewerOpen}
+          onClose={() => setIsManifestViewerOpen(false)}
+        />
+      )}
     </div>
   );
 }
