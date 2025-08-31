@@ -1,4 +1,5 @@
 import { Move, Square, TriangleRight } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 interface ToolBarProps {
   tool: "rectangle" | "polygon" | undefined;
@@ -6,6 +7,8 @@ interface ToolBarProps {
 }
 
 export function ToolBar({ tool, setTool }: ToolBarProps) {
+  const t = useTranslations('Editor.tools');
+  
   return (
     <div
       className="px-2 sm:px-4 py-2 sm:py-3 bg-gray-50 dark:bg-gray-800 
@@ -32,7 +35,7 @@ export function ToolBar({ tool, setTool }: ToolBarProps) {
           `}
           onClick={() => setTool(undefined)}
         >
-          <Move className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> Move
+          <Move className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> {t('move')}
         </button>
         <button
           className={`
@@ -54,7 +57,7 @@ export function ToolBar({ tool, setTool }: ToolBarProps) {
           `}
           onClick={() => setTool("rectangle")}
         >
-          <Square className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> Rectangle
+          <Square className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> {t('rectangle')}
         </button>
         <button
           className={`
@@ -77,7 +80,7 @@ export function ToolBar({ tool, setTool }: ToolBarProps) {
           onClick={() => setTool("polygon")}
         >
           <TriangleRight className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-          Polygon
+          {t('polygon')}
         </button>
       </div>
     </div>

@@ -2,7 +2,13 @@
 
 import dynamic from "next/dynamic";
 
-const ClientSideCustomEditor = dynamic(
+interface EditorProps {
+  data: string;
+  onChange: (data: string) => void;
+  placeholder?: string;
+}
+
+const ClientSideCustomEditor = dynamic<EditorProps>(
   () => import("@/components/custom-editor"),
   { ssr: false }
 );

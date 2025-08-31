@@ -10,9 +10,11 @@ import "ckeditor5/ckeditor5.css";
 function CustomEditor({
   data,
   onChange,
+  placeholder = "テキストを入力してください...",
 }: {
   data: string;
   onChange: (data: string) => void;
+  placeholder?: string;
 }) {
   // ダークモードのスタイルを動的に適用
   useEffect(() => {
@@ -76,7 +78,7 @@ function CustomEditor({
           licenseKey: "GPL",
           plugins: [Essentials, Paragraph, Bold, Italic],
           toolbar: ["undo", "redo", "|", "bold", "italic"],
-          placeholder: "テキストを入力してください...",
+          placeholder: placeholder,
         }}
         data={data}
         onChange={(_, editor) => {

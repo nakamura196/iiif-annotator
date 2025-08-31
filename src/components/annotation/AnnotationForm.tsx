@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Trash2 } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 import ClientSideCustomEditor from "@/components/client-side-custom-editor";
 
@@ -23,6 +24,7 @@ export function AnnotationForm({
 }: AnnotationFormProps) {
   // エディタの内容を保持するための状態
   const [editorContent, setEditorContent] = useState(text);
+  const t = useTranslations('Editor');
 
   useEffect(() => {
     setEditorContent(text);
@@ -40,13 +42,14 @@ export function AnnotationForm({
         className="text-lg sm:text-xl font-semibold text-gray-800 
         dark:text-gray-100 mb-4 sm:mb-6"
       >
-        Annotation Details
+        {t('annotationDetails')}
       </h3>
       <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
         <div className="bg-white dark:bg-gray-800 rounded-md">
           <ClientSideCustomEditor
             data={editorContent}
             onChange={(data) => setEditorContent(data)}
+            placeholder={t('enterText')}
           />
         </div>
 
@@ -61,7 +64,7 @@ export function AnnotationForm({
               dark:focus:ring-offset-gray-900
               transition-colors duration-200 font-medium"
           >
-            Save Changes
+            {t('saveChanges')}
           </button>
           {id && (
             <button
@@ -77,7 +80,7 @@ export function AnnotationForm({
                 dark:focus:ring-red-400 focus:ring-offset-2
                 dark:focus:ring-offset-gray-900"
             >
-              <Trash2 className="w-4 h-4 mr-2" /> Delete
+              <Trash2 className="w-4 h-4 mr-2" /> {t('deleteAnnotation')}
             </button>
           )}
         </div>

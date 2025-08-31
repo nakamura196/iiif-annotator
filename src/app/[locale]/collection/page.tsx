@@ -20,6 +20,10 @@ interface IIIFV3Item {
     type: string;
     format?: string;
   }>;
+  metadata?: Array<{
+    label: { [key: string]: string[] };
+    value: { [key: string]: string[] };
+  }>;
 }
 
 interface IIIFV3Collection {
@@ -42,7 +46,7 @@ function CollectionContent() {
   const [items, setItems] = useState<IIIFV3Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const t = useTranslations();
 
   useEffect(() => {
@@ -68,7 +72,6 @@ function CollectionContent() {
         
         if (data["@type"] === "sc:Collection" || data["@context"]?.includes("http://iiif.io/api/presentation/2/context.json")) {
           // It's v2, convert to v3
-          console.log("Converting IIIF v2 collection to v3");
           convertedData = convertPresentation2(data) as IIIFV3Collection;
         } else {
           // It's already v3
@@ -80,11 +83,7 @@ function CollectionContent() {
         // Extract items
         const itemList = convertedData.items || [];
         setItems(itemList);
-        
-        console.log("Loaded collection:", convertedData);
-        console.log("Found items:", itemList);
       } catch (err) {
-        console.error("Error loading collection:", err);
         setError(err instanceof Error ? err.message : t('CollectionPage.noCollection'));
       } finally {
         setLoading(false);
@@ -150,6 +149,21 @@ function CollectionContent() {
   const getThumbnail = (thumbnail: IIIFV3Item["thumbnail"]): string | null => {
     if (!thumbnail || !Array.isArray(thumbnail) || thumbnail.length === 0) return null;
     return thumbnail[0].id || null;
+  };
+
+  const getMetadataValue = (metadata: IIIFV3Item["metadata"]): { label: string, value: string }[] => {
+    if (!metadata || !Array.isArray(metadata)) return [];
+    
+    // 最初の3つのメタデータのみ表示（コンパクトにするため）
+    return metadata.slice(0, 3).map(item => {
+      const label = item.label[locale] ? item.label[locale][0] : 
+                   item.label['ja'] ? item.label['ja'][0] : 
+                   Object.values(item.label)[0]?.[0] || '';
+      const value = item.value[locale] ? item.value[locale][0] : 
+                   item.value['ja'] ? item.value['ja'][0] : 
+                   Object.values(item.value)[0]?.[0] || '';
+      return { label, value };
+    });
   };
 
   const handleItemClick = (item: IIIFV3Item) => {
@@ -286,14 +300,14 @@ function CollectionContent() {
                   className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => handleItemClick(item)}
                 >
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                       {isCollection ? (
-                        <Folder className="h-5 w-5 text-yellow-600" />
+                        <Folder className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 flex-shrink-0" />
                       ) : (
-                        <FileText className="h-5 w-5 text-blue-600" />
+                        <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
                       )}
-                      {getLabel(item.label)}
+                      <span className="truncate">{getLabel(item.label)}</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -301,7 +315,7 @@ function CollectionContent() {
                       <img 
                         src={thumbnailUrl} 
                         alt={getLabel(item.label)}
-                        className="w-full h-48 object-cover rounded mb-2"
+                        className="w-full h-32 sm:h-48 object-cover rounded mb-2"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                         }}
@@ -329,57 +343,92 @@ function CollectionContent() {
                 const summary = getSummary(item.summary);
                 const isCollection = item.type === "Collection";
                 const label = getLabel(item.label);
+                const metadata = getMetadataValue(item.metadata);
                 
                 return (
                   <div
                     key={index}
-                    onClick={() => handleItemClick(item)}
-                    className="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 
+                    className="p-3 sm:p-4 bg-white dark:bg-gray-800 
                       border border-gray-200 dark:border-gray-700 rounded-lg
-                      hover:shadow-md transition-shadow cursor-pointer"
+                      hover:shadow-md transition-shadow"
                   >
-                    {/* サムネイル */}
-                    {thumbnailUrl && (
-                      <img 
-                        src={thumbnailUrl} 
-                        alt={label}
-                        className="w-16 h-16 object-cover rounded flex-shrink-0"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    )}
-                    
-                    {/* コンテンツ */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <h3 className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                            {isCollection ? (
-                              <Folder className="h-4 w-4 text-yellow-600 flex-shrink-0" />
-                            ) : (
-                              <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      {/* サムネイル - モバイルでは上部に表示 */}
+                      {thumbnailUrl && (
+                        <img 
+                          src={thumbnailUrl} 
+                          alt={label}
+                          className="w-full sm:w-20 h-32 sm:h-20 object-cover rounded flex-shrink-0"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      )}
+                      
+                      {/* コンテンツ */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                          <div className="flex-1">
+                            <h3 className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                              {isCollection ? (
+                                <Folder className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+                              ) : (
+                                <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                              )}
+                              <span className="select-text break-words">{label}</span>
+                            </h3>
+                            
+                            {summary && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2 select-text">
+                                {summary}
+                              </p>
                             )}
-                            <span className="truncate">{label}</span>
-                          </h3>
-                          
-                          {summary && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-1">
-                              {summary}
-                            </p>
-                          )}
-                          
-                          <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                            <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
-                              {isCollection ? t('CollectionPage.typeCollection') : t('CollectionPage.typeManifest')}
-                            </span>
-                            <span className="truncate max-w-xs" title={item.id}>
-                              {item.id}
-                            </span>
+                            
+                            {/* メタデータ - モバイルでは縦に並べる */}
+                            {metadata.length > 0 && (
+                              <div className="mt-2 flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-3 text-xs">
+                                {metadata.map((item, idx) => (
+                                  <div key={idx} className="flex gap-1">
+                                    <span className="text-gray-500 dark:text-gray-400 select-text">{item.label}:</span>
+                                    <span className="text-gray-700 dark:text-gray-300 select-text break-words">{item.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mt-2 text-xs text-gray-500">
+                              <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded inline-block">
+                                {isCollection ? t('CollectionPage.typeCollection') : t('CollectionPage.typeManifest')}
+                              </span>
+                              <span className="text-gray-400 select-text truncate" title={item.id}>
+                                {item.id}
+                              </span>
+                            </div>
                           </div>
+                          
+                          {/* ボタン - モバイルでは幅いっぱいに */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleItemClick(item);
+                            }}
+                            className="w-full sm:w-auto px-3 py-2 sm:py-1.5 bg-blue-600 dark:bg-blue-500 text-white 
+                              text-sm rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors 
+                              flex items-center justify-center gap-1 flex-shrink-0"
+                          >
+                            {isCollection ? (
+                              <>
+                                <Folder className="h-4 w-4" />
+                                {t('CollectionPage.open')}
+                              </>
+                            ) : (
+                              <>
+                                <ExternalLink className="h-4 w-4" />
+                                {t('CollectionPage.edit')}
+                              </>
+                            )}
+                          </button>
                         </div>
-                        
-                        <ExternalLink className="h-4 w-4 text-gray-400 flex-shrink-0" />
                       </div>
                     </div>
                   </div>

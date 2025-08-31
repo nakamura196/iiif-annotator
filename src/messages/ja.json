@@ -2,7 +2,8 @@
   "Common": {
     "title": "IIIF Annotator",
     "description": "IIIFマニフェストの注釈を編集・管理するためのツール",
-    "loading": "読み込み中..."
+    "loading": "読み込み中...",
+    "help": "ヘルプ"
   },
   "HomePage": {
     "manifest": {
@@ -35,6 +36,7 @@
     "loading": "読み込み中...",
     "items": "アイテム",
     "edit": "編集",
+    "open": "開く",
     "noItems": "アイテムが見つかりませんでした",
     "backToParent": "親コレクションに戻る",
     "backToHome": "ホームに戻る",
@@ -59,7 +61,16 @@
     "exportManifest": "IIIFマニフェストファイル形式でダウンロード",
     "exportTEI": "TEI/XML形式でダウンロード",
     "exportJSON": "JSON形式でダウンロード",
-    "noAnnotations": "アノテーションがありません"
+    "noAnnotations": "アノテーションがありません",
+    "tools": {
+      "move": "移動",
+      "rectangle": "矩形",
+      "polygon": "多角形"
+    },
+    "annotationDetails": "アノテーション詳細",
+    "saveChanges": "変更を保存",
+    "deleteAnnotation": "削除",
+    "enterText": "テキストを入力してください..."
   },
   "Auth": {
     "login": "ログイン",
@@ -77,5 +88,9 @@
   "AnnotationList": {
     "annotations": "アノテーション",
     "noAnnotations": "アノテーションがありません"
+  },
+  "HelpPage": {
+    "title": "使い方ガイド",
+    "backToHome": "ホームに戻る"
   }
 }
