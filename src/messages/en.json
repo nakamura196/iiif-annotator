@@ -1,0 +1,81 @@
+{
+  "Common": {
+    "title": "IIIF Annotator",
+    "description": "A tool for editing and managing IIIF manifest annotations",
+    "loading": "Loading..."
+  },
+  "HomePage": {
+    "manifest": {
+      "title": "Edit Manifest",
+      "description": "Enter IIIF manifest URL to edit",
+      "urlLabel": "Manifest URL",
+      "urlPlaceholder": "https://example.com/manifest.json",
+      "pageLabel": "Page Number (Optional)",
+      "pagePlaceholder": "1",
+      "useExample": "Use Example",
+      "submit": "Go to Editor"
+    },
+    "collection": {
+      "title": "View Collection",
+      "description": "Enter IIIF collection URL to view",
+      "urlLabel": "Collection URL",
+      "urlPlaceholder": "https://example.com/collection.json",
+      "useExample": "Use Example",
+      "submit": "View Collection"
+    }
+  },
+  "ItemPage": {
+    "noManifest": "No manifest URL specified.",
+    "loading": "Loading...",
+    "backToCollection": "Back to Collection"
+  },
+  "CollectionPage": {
+    "title": "Collection",
+    "noCollection": "No collection URL specified.",
+    "loading": "Loading...",
+    "items": "Items",
+    "edit": "Edit",
+    "noItems": "No items found",
+    "backToParent": "Back to Parent Collection",
+    "backToHome": "Back to Home",
+    "typeCollection": "Collection",
+    "typeManifest": "Manifest"
+  },
+  "Editor": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "close": "Close",
+    "confirm": "Confirm",
+    "export": "Export",
+    "import": "Import",
+    "loadingManifest": "Loading manifest...",
+    "noImagesFound": "No images found in manifest",
+    "annotations": "Annotations",
+    "page": "Page: {current} of {total}",
+    "exportButton": "Export",
+    "exportManifest": "Download as IIIF Manifest",
+    "exportTEI": "Download as TEI/XML",
+    "exportJSON": "Download as JSON",
+    "noAnnotations": "No annotations"
+  },
+  "Auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "createAccount": "Create Account",
+    "signIn": "Sign In",
+    "signInWithGoogle": "Sign in with Google",
+    "email": "Email",
+    "password": "Password",
+    "existingAccount": "Already have an account? Sign in",
+    "newAccount": "Create a new account",
+    "googleLoginError": "Failed to sign in with Google",
+    "authError": "An error occurred during authentication"
+  },
+  "AnnotationList": {
+    "annotations": "Annotations",
+    "noAnnotations": "No annotations"
+  }
+}

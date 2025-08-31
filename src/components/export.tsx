@@ -5,6 +5,7 @@ import FirestoreAnnotationAdapter from "@/lib/FirestoreAnnotationAdapter";
 import { createTEI } from "@/lib/utils/export/tei/createTEI";
 import { AnnotationWidthSingleBody } from "@/types/annotation";
 import { createManifest } from "@/lib/utils/export/manifest/createManifest";
+import { useTranslations } from 'next-intl';
 export const Export = ({
   adapter,
 }: {
@@ -12,6 +13,7 @@ export const Export = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const t = useTranslations('Editor');
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -99,7 +101,7 @@ export const Export = ({
             clipRule="evenodd"
           />
         </svg>
-        エクスポート
+        {t('exportButton')}
       </button>
 
       {isOpen && (
@@ -114,7 +116,7 @@ export const Export = ({
                 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
               role="menuitem"
             >
-              IIIFマニフェストファイル形式でダウンロード
+              {t('exportManifest')}
             </button>
             <button
               onClick={() => exportAnnotations("tei")}
@@ -122,7 +124,7 @@ export const Export = ({
                 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
               role="menuitem"
             >
-              TEI/XML形式でダウンロード
+              {t('exportTEI')}
             </button>
             <button
               onClick={() => exportAnnotations("json")}
@@ -130,7 +132,7 @@ export const Export = ({
                 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
               role="menuitem"
             >
-              JSON形式でダウンロード
+              {t('exportJSON')}
             </button>
             {/*
             <button

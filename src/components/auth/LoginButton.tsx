@@ -11,6 +11,7 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { LogOut } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 interface LoginButtonProps {
   user: User | null;
@@ -24,6 +25,7 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState("");
+  const t = useTranslations('Auth');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +52,7 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
       setShowModal(false);
     } catch (error) {
       console.error("Error signing in with Google", error);
-      setError("Googleログインに失敗しました");
+      setError(t('googleLoginError'));
     }
   };
 
@@ -69,7 +71,7 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
       if (error instanceof Error) {
         setError(error.message);
       } else {
-        setError("エラーが発生しました");
+        setError(t('authError'));
       }
     }
   };
@@ -146,7 +148,7 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
                   flex items-center gap-2"
               >
                 <LogOut className="w-4 h-4" />
-                ログアウト
+                {t('logout')}
               </button>
             </div>
           </div>
@@ -165,7 +167,7 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
           focus:outline-none focus:ring-2 focus:ring-blue-500 
           dark:focus:ring-blue-600 focus:ring-offset-2"
       >
-        Login
+        {t('login')}
       </button>
 
       {showModal && (
@@ -178,7 +180,7 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
             max-w-md relative"
           >
             <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
-              {isSignUp ? "アカウント作成" : "ログイン"}
+              {isSignUp ? t('createAccount') : t('signIn')}
             </h2>
 
             {error && (
@@ -194,7 +196,7 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
             <form onSubmit={handleEmailAuth} className="space-y-4">
               <div>
                 <label className="block mb-2 text-gray-700 dark:text-gray-200">
-                  メールアドレス
+                  {t('email')}
                 </label>
                 <input
                   type="email"
@@ -208,7 +210,7 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
               </div>
               <div>
                 <label className="block mb-2 text-gray-700 dark:text-gray-200">
-                  パスワード
+                  {t('password')}
                 </label>
                 <input
                   type="password"
@@ -226,7 +228,7 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
                   px-4 py-2 rounded-md hover:bg-blue-600 
                   dark:hover:bg-blue-700 transition-colors duration-150"
               >
-                {isSignUp ? "アカウント作成" : "ログイン"}
+                {isSignUp ? t('createAccount') : t('signIn')}
               </button>
             </form>
 
@@ -242,7 +244,7 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
                 alt="Google"
                 className="w-6 h-6 mr-2"
               />
-              Googleでログイン
+              {t('signInWithGoogle')}
             </button>
 
             <button
@@ -250,7 +252,7 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
               className="w-full mt-4 text-blue-500 dark:text-blue-400 
                 hover:text-blue-600 dark:hover:text-blue-500"
             >
-              {isSignUp ? "既存のアカウントでログイン" : "新規アカウント作成"}
+              {isSignUp ? t('existingAccount') : t('newAccount')}
             </button>
 
             <button

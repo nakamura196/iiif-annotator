@@ -1,0 +1,81 @@
+{
+  "Common": {
+    "title": "IIIF Annotator",
+    "description": "IIIFマニフェストの注釈を編集・管理するためのツール",
+    "loading": "読み込み中..."
+  },
+  "HomePage": {
+    "manifest": {
+      "title": "マニフェストを編集",
+      "description": "IIIFマニフェストURLを入力して編集画面へ",
+      "urlLabel": "Manifest URL",
+      "urlPlaceholder": "https://example.com/manifest.json",
+      "pageLabel": "ページ番号（任意）",
+      "pagePlaceholder": "1",
+      "useExample": "入力例を使用",
+      "submit": "編集画面へ"
+    },
+    "collection": {
+      "title": "コレクションを表示",
+      "description": "IIIFコレクションURLを入力して一覧表示",
+      "urlLabel": "Collection URL",
+      "urlPlaceholder": "https://example.com/collection.json",
+      "useExample": "入力例を使用",
+      "submit": "コレクション表示"
+    }
+  },
+  "ItemPage": {
+    "noManifest": "マニフェストURLが指定されていません。",
+    "loading": "読み込み中...",
+    "backToCollection": "コレクションに戻る"
+  },
+  "CollectionPage": {
+    "title": "コレクション",
+    "noCollection": "コレクションURLが指定されていません。",
+    "loading": "読み込み中...",
+    "items": "アイテム",
+    "edit": "編集",
+    "noItems": "アイテムが見つかりませんでした",
+    "backToParent": "親コレクションに戻る",
+    "backToHome": "ホームに戻る",
+    "typeCollection": "コレクション",
+    "typeManifest": "マニフェスト"
+  },
+  "Editor": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "add": "追加",
+    "close": "閉じる",
+    "confirm": "確認",
+    "export": "エクスポート",
+    "import": "インポート",
+    "loadingManifest": "マニフェストを読み込み中...",
+    "noImagesFound": "マニフェストに画像が見つかりません",
+    "annotations": "アノテーション",
+    "page": "ページ: {current} / {total}",
+    "exportButton": "エクスポート",
+    "exportManifest": "IIIFマニフェストファイル形式でダウンロード",
+    "exportTEI": "TEI/XML形式でダウンロード",
+    "exportJSON": "JSON形式でダウンロード",
+    "noAnnotations": "アノテーションがありません"
+  },
+  "Auth": {
+    "login": "ログイン",
+    "logout": "ログアウト",
+    "createAccount": "アカウント作成",
+    "signIn": "ログイン",
+    "signInWithGoogle": "Googleでログイン",
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "existingAccount": "既存のアカウントでログイン",
+    "newAccount": "新規アカウント作成",
+    "googleLoginError": "Googleログインに失敗しました",
+    "authError": "エラーが発生しました"
+  },
+  "AnnotationList": {
+    "annotations": "アノテーション",
+    "noAnnotations": "アノテーションがありません"
+  }
+}

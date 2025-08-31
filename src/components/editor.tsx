@@ -9,6 +9,7 @@ import type {
 } from "@annotorious/react";
 import "@annotorious/react/annotorious-react.css";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from 'next-intl';
 import FirestoreAnnotationAdapter from "@/lib/FirestoreAnnotationAdapter";
 import { AnnotationList } from "@/components/annotation/AnnotationList";
 import { AnnotationForm } from "@/components/annotation/AnnotationForm";
@@ -38,6 +39,7 @@ const DynamicAnnotorious = dynamic(
 function App() {
   const searchParams = useSearchParams();
   const manifestUrl = searchParams.get("manifest");
+  const t = useTranslations('Editor');
 
   const [infoUrls, setInfoUrls] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -265,7 +267,7 @@ function App() {
 
   // ローディング表示
   if (isLoading) {
-    return <LoadingScreen message="Loading manifest..." />;
+    return <LoadingScreen message={t('loadingManifest')} />;
   }
 
   // infoUrls が空の場合
@@ -275,7 +277,7 @@ function App() {
         className="flex items-center justify-center h-screen 
         bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
       >
-        No images found in manifest
+        {t('noImagesFound')}
       </div>
     );
   }
@@ -294,7 +296,7 @@ function App() {
 
   return (
     <div
-      className="flex flex-col lg:flex-row flex-1 h-full 
+      className="flex flex-col lg:flex-row h-full min-h-[calc(100vh-8rem)]
       bg-white dark:bg-gray-900"
     >
       {/* サイドバー（アノテーションリスト） */}
@@ -306,10 +308,10 @@ function App() {
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Annotations
+                {t('annotations')}
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Page: {currentPage + 1} of {infoUrls.length}
+                {t('page', { current: currentPage + 1, total: infoUrls.length })}
               </p>
             </div>
             <Export adapter={adapter} />
@@ -329,7 +331,7 @@ function App() {
       </div>
 
       {/* メインビューア */}
-      <div className="w-full lg:w-2/4 h-[50vh] lg:h-auto flex flex-col">
+      <div className="w-full lg:w-2/4 min-h-[50vh] lg:min-h-full flex flex-col">
         <Viewer tool={tool} options={getViewerOptions(infoUrls)} />
       </div>
 
@@ -356,7 +358,11 @@ function App() {
 }
 
 // クライアントサイドのみでレンダリングされるコンポーネント
-const ClientOnly = dynamic(() => Promise.resolve(App), {
+const ClientOnly = dynamic(() => Promise.resolve(() => (
+  <div className="h-full">
+    <App />
+  </div>
+)), {
   ssr: false,
 });
 

@@ -1,4 +1,5 @@
 import type { AnnotationWithMultipleBodies } from "@/types/annotation";
+import { useTranslations } from 'next-intl';
 
 interface AnnotationListProps {
   annotations: AnnotationWithMultipleBodies[];
@@ -16,6 +17,7 @@ export function AnnotationList({
   onSelect,
   selectedId,
 }: AnnotationListProps) {
+  const t = useTranslations('AnnotationList');
   return (
     <div className="flex flex-col h-full">
       <div
@@ -26,7 +28,7 @@ export function AnnotationList({
           className="text-sm sm:text-base font-medium text-gray-900 
               dark:text-gray-100"
         >
-          Annotations{" "}
+          {t('annotations')}{" "}
           <span className="text-gray-500 dark:text-gray-400 font-normal">
             ({annotations.length})
           </span>
@@ -63,7 +65,7 @@ export function AnnotationList({
             className="px-3 sm:px-4 py-4 text-center text-gray-500 
             dark:text-gray-400 text-sm"
           >
-            アノテーションがありません
+            {t('noAnnotations')}
           </div>
         )}
       </div>
