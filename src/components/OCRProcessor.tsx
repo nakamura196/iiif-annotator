@@ -309,6 +309,27 @@ export function OCRProcessor({ isOpen, onClose, imageUrl, canvasWidth, canvasHei
                 <Scan className="h-5 w-5" />
                 {t("process")}
               </button>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">
+                {t("clickToProcess")}
+              </p>
+              
+              {/* Description and Credits */}
+              <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg max-w-md">
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                  {t("description")}
+                </p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                  {t("credit")}
+                </p>
+                <a 
+                  href="https://github.com/yuta1984/ndlkotenocr-lite-web"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {t("githubLink")} →
+                </a>
+              </div>
             </div>
           )}
 

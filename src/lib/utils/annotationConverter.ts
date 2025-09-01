@@ -21,15 +21,30 @@ export function convertMultipleAnnotations(
         
         // Validate SVG selector if present
         const svgSelector = selectors.target.selector.find(
-          (s: any) => s.type === "SvgSelector"
-        );
+          (s: { type: string; value?: string }) => s.type === "SvgSelector"
+        ) as { type: string; value?: string } | undefined;
         if (svgSelector && svgSelector.value) {
           // Check if the SVG contains valid path or polygon data
           const hasValidPath = svgSelector.value.includes('<path') || 
                               svgSelector.value.includes('<polygon');
-          if (!hasValidPath) {
-            console.warn(`Invalid SVG selector for annotation ${selectors.id}:`, svgSelector.value);
+          const hasValidD = svgSelector.value.includes('d=');
+          const hasValidPoints = svgSelector.value.includes('points=');
+          
+          if (!hasValidPath || (!hasValidD && !hasValidPoints)) {
+            console.warn(`Invalid SVG selector for annotation ${selectors.id}, skipping...`);
             return null;
+          }
+          
+          // Additional validation: check for empty or malformed d attribute
+          if (hasValidD) {
+            const dMatch = svgSelector.value.match(/d="([^"]*)"/);
+            if (dMatch && dMatch[1]) {
+              const dValue = dMatch[1].trim();
+              if (!dValue || dValue === 'undefined' || dValue === 'null') {
+                console.warn(`Empty or invalid d attribute in SVG for annotation ${selectors.id}, skipping...`);
+                return null;
+              }
+            }
           }
         }
         

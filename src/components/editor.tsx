@@ -193,7 +193,36 @@ function App() {
         );
 
         if (annotoriousAnnotations.length > 0) {
-          anno.setAnnotations(annotoriousAnnotations);
+          // Filter out annotations with problematic SVG paths
+          const validAnnotations = annotoriousAnnotations.filter(annotation => {
+            try {
+              // Check if target has valid selector
+              const target = annotation.target as any;
+              if (target?.selector) {
+                // Check for SVG selector
+                if (typeof target.selector === 'object' && 'value' in target.selector) {
+                  const value = target.selector.value;
+                  // Skip if SVG path contains problematic patterns
+                  if (typeof value === 'string' && value.includes('<svg')) {
+                    // Basic validation of SVG content
+                    if (!value.includes('d=') && !value.includes('points=')) {
+                      console.warn(`Skipping annotation with invalid SVG: ${annotation.id}`);
+                      return false;
+                    }
+                  }
+                }
+              }
+              return true;
+            } catch (err) {
+              console.warn(`Skipping invalid annotation ${annotation.id}:`, err);
+              return false;
+            }
+          });
+          
+          // Set all valid annotations at once
+          if (validAnnotations.length > 0) {
+            anno.setAnnotations(validAnnotations);
+          }
         }
       } catch (error) {
         console.error("Failed to set annotations:", error);
