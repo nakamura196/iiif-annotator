@@ -8,7 +8,7 @@ import type {
   ImageAnnotation,
 } from "@annotorious/react";
 import "@annotorious/react/annotorious-react.css";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import FirestoreAnnotationAdapter from "@/lib/FirestoreAnnotationAdapter";
 import { AnnotationList } from "@/components/annotation/AnnotationList";
@@ -42,6 +42,8 @@ const DynamicAnnotorious = dynamic(
 
 function App() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const manifestUrl = searchParams.get("manifest");
   const t = useTranslations('Editor');
 
@@ -222,6 +224,13 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anno, currentPage, user]);
 
+  // Update URL when page changes
+  const updateURLWithPage = useCallback((page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('pos', String(page + 1));
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, router, pathname]);
+
   // ページ変更ハンドラーをメモ化
   const handlePageChange = useCallback(async (event: { page: number }) => {
     // 初期化
@@ -230,7 +239,8 @@ function App() {
     setTool(undefined);
     const newPage = event.page;
     setCurrentPage(newPage);
-  }, []);
+    updateURLWithPage(newPage);
+  }, [updateURLWithPage]);
 
   useEffect(() => {
     if (!anno) return;
@@ -373,18 +383,20 @@ function App() {
         border-gray-200 dark:border-gray-700 flex flex-col"
       >
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          {/* Header - Responsive layout */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+            {/* Title and page info with navigation */}
+            <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 flex-1">
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">
                   {t('annotations')}
                 </h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1">
                   {t('page', { current: currentPage + 1, total: infoUrls.length })}
                 </p>
               </div>
               {/* Page navigation buttons */}
-              <div className="flex gap-1">
+              <div className="flex gap-1 shrink-0">
                 <button
                   onClick={() => {
                     if (anno && currentPage > 0) {
@@ -392,13 +404,13 @@ function App() {
                     }
                   }}
                   disabled={currentPage === 0}
-                  className="p-1.5 rounded text-gray-600 dark:text-gray-400 
+                  className="p-1 sm:p-1.5 rounded text-gray-600 dark:text-gray-400 
                     hover:text-gray-900 dark:hover:text-gray-100 
                     disabled:opacity-50 disabled:cursor-not-allowed
                     hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   title="Previous page"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
                 <button
                   onClick={() => {
@@ -407,30 +419,31 @@ function App() {
                     }
                   }}
                   disabled={currentPage === infoUrls.length - 1}
-                  className="p-1.5 rounded text-gray-600 dark:text-gray-400 
+                  className="p-1 sm:p-1.5 rounded text-gray-600 dark:text-gray-400 
                     hover:text-gray-900 dark:hover:text-gray-100 
                     disabled:opacity-50 disabled:cursor-not-allowed
                     hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   title="Next page"
                 >
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               </div>
             </div>
-            <div className="flex gap-2">
+            {/* Action buttons */}
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setIsOCROpen(true)}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/20 
+                className="flex items-center gap-1 px-2 sm:px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/20 
                   text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 
                   transition-colors"
                 title="OCR Text Recognition"
               >
                 <ScanText className="h-4 w-4" />
-                <span className="hidden sm:inline">OCR</span>
+                <span className="hidden lg:inline">OCR</span>
               </button>
               <button
                 onClick={() => setIsManifestViewerOpen(true)}
-                className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 
+                className="p-1.5 sm:p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 
                   dark:hover:text-gray-100 transition-colors"
                 title="View IIIF Manifest"
               >
