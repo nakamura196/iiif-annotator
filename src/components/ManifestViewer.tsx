@@ -45,8 +45,8 @@ export function ManifestViewer({ manifestUrl, isOpen, onClose }: ManifestViewerP
       await navigator.clipboard.writeText(JSON.stringify(manifest, null, 2));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
+    } catch {
+      // Failed to copy
     }
   };
 

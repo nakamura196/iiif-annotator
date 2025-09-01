@@ -32,7 +32,7 @@ import { Canvas } from "@iiif/presentation-3";
 import { Export } from "@/components/export";
 import { ManifestViewer } from "@/components/ManifestViewer";
 import { OCRProcessor } from "@/components/OCRProcessor";
-import { ScanText } from "lucide-react";
+import { ScanText, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 // コンポーネントの動的インポート
 const DynamicAnnotorious = dynamic(
@@ -131,8 +131,8 @@ function App() {
 
         // setCanvasId(canvasId);
         setCurrentPage(initialPage);
-      } catch (error) {
-        console.error("Failed to initialize:", error);
+      } catch {
+        // Failed to initialize
       } finally {
         setIsLoading(false);
       }
@@ -193,39 +193,30 @@ function App() {
         );
 
         if (annotoriousAnnotations.length > 0) {
-          // Filter out annotations with problematic SVG paths
-          const validAnnotations = annotoriousAnnotations.filter(annotation => {
-            try {
-              // Check if target has valid selector
-              const target = annotation.target as any;
-              if (target?.selector) {
-                // Check for SVG selector
-                if (typeof target.selector === 'object' && 'value' in target.selector) {
-                  const value = target.selector.value;
-                  // Skip if SVG path contains problematic patterns
-                  if (typeof value === 'string' && value.includes('<svg')) {
-                    // Basic validation of SVG content
-                    if (!value.includes('d=') && !value.includes('points=')) {
-                      console.warn(`Skipping annotation with invalid SVG: ${annotation.id}`);
-                      return false;
-                    }
-                  }
-                }
-              }
-              return true;
-            } catch (err) {
-              console.warn(`Skipping invalid annotation ${annotation.id}:`, err);
-              return false;
-            }
-          });
+          // Try setting annotations one by one to handle individual errors
+          const validAnnotations: ImageAnnotation[] = [];
+          const failedAnnotations: string[] = [];
           
-          // Set all valid annotations at once
-          if (validAnnotations.length > 0) {
-            anno.setAnnotations(validAnnotations);
+          // First clear any existing annotations
+          anno.clearAnnotations();
+          
+          // Try to add each annotation individually
+          for (const annotation of annotoriousAnnotations) {
+            try {
+              anno.addAnnotation(annotation);
+              validAnnotations.push(annotation);
+            } catch {
+              failedAnnotations.push(annotation.id);
+              
+              // Skip fallback - annotation ID already exists
+              // Just log the failure
+            }
           }
+          
+          // Track failed annotations silently
         }
-      } catch (error) {
-        console.error("Failed to set annotations:", error);
+      } catch {
+        // Failed to set annotations
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -265,8 +256,8 @@ function App() {
           await adapter.delete(id);
         }
       }
-    } catch (error) {
-      console.error("Failed to delete annotation:", error);
+    } catch {
+      // Failed to delete annotation
     }
 
     setSelectedAnnotationId(null);
@@ -383,13 +374,48 @@ function App() {
       >
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                {t('annotations')}
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {t('page', { current: currentPage + 1, total: infoUrls.length })}
-              </p>
+            <div className="flex items-center gap-3">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {t('annotations')}
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {t('page', { current: currentPage + 1, total: infoUrls.length })}
+                </p>
+              </div>
+              {/* Page navigation buttons */}
+              <div className="flex gap-1">
+                <button
+                  onClick={() => {
+                    if (anno && currentPage > 0) {
+                      anno.viewer.goToPage(currentPage - 1);
+                    }
+                  }}
+                  disabled={currentPage === 0}
+                  className="p-1.5 rounded text-gray-600 dark:text-gray-400 
+                    hover:text-gray-900 dark:hover:text-gray-100 
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                    hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  title="Previous page"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => {
+                    if (anno && currentPage < infoUrls.length - 1) {
+                      anno.viewer.goToPage(currentPage + 1);
+                    }
+                  }}
+                  disabled={currentPage === infoUrls.length - 1}
+                  className="p-1.5 rounded text-gray-600 dark:text-gray-400 
+                    hover:text-gray-900 dark:hover:text-gray-100 
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                    hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  title="Next page"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
             </div>
             <div className="flex gap-2">
               <button
@@ -489,11 +515,25 @@ function App() {
             return body?.height || 4583;
           })()}
           onTextExtracted={async (text, detections) => {
+            // Check if user is logged in first
+            if (!user) {
+              alert("ログインが必要です");
+              return;
+            }
+            
             // Create annotations from OCR results
             if (detections && detections.length > 0 && anno) {
+              const newAnnotations = [];
+              
               for (const detection of detections) {
                 if (detection.box && detection.text) {
                   const [x, y, width, height] = detection.box;
+                  
+                  // Validate dimensions
+                  if (width <= 0 || height <= 0 || isNaN(x) || isNaN(y) || isNaN(width) || isNaN(height)) {
+                    // Skip invalid dimensions
+                    continue;
+                  }
                   
                   // Create annotation in Annotorious format
                   const newAnnotation = {
@@ -502,32 +542,49 @@ function App() {
                       selector: {
                         type: "FragmentSelector",
                         conformsTo: "http://www.w3.org/TR/media-frags/",
-                        value: `xywh=pixel:${x},${y},${width},${height}`
+                        value: `xywh=pixel:${Math.round(x)},${Math.round(y)},${Math.round(width)},${Math.round(height)}`
                       }
                     },
                     body: [
                       {
                         type: "TextualBody",
-                        value: detection.text,
+                        value: detection.text.trim(),
                         purpose: "commenting"
                       }
                     ]
                   };
                   
-                  // Add annotation to Annotorious
-                  anno.addAnnotation(newAnnotation as unknown as ImageAnnotation);
+                  try {
+                    // Add annotation to Annotorious
+                    anno.addAnnotation(newAnnotation as unknown as ImageAnnotation);
+                    newAnnotations.push(newAnnotation);
+                  } catch {
+                    // Skip if annotation cannot be added
+                    continue;
+                  }
+                }
+              }
+              
+              // Save all annotations to Firebase at once
+              if (adapter && newAnnotations.length > 0) {
+                try {
+                  const canvasId = canvases[currentPage]?.["id"];
+                  const iiifAnnotations = [];
                   
-                  // Save to Firebase
-                  if (adapter) {
-                    const canvasId = canvases[currentPage]?.["id"];
+                  for (const annotation of newAnnotations) {
                     const iiifAnnotation = convertAnnotoriousToIIIF(
-                      newAnnotation as unknown as ImageAnnotation,
+                      annotation as unknown as ImageAnnotation,
                       canvasId,
                       manifestUrl || ""
                     );
                     await adapter.create(iiifAnnotation);
-                    setResults([...results, iiifAnnotation]);
+                    iiifAnnotations.push(iiifAnnotation);
                   }
+                  
+                  setResults([...results, ...iiifAnnotations]);
+                } catch {
+                  // Handle error silently or show single error message
+                  alert("アノテーションの保存に失敗しました");
                 }
               }
             }

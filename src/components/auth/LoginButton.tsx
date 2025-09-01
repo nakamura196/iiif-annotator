@@ -50,8 +50,8 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
     try {
       await signInWithPopup(auth, provider);
       setShowModal(false);
-    } catch (error) {
-      console.error("Error signing in with Google", error);
+    } catch {
+      // Error signing in with Google
       setError(t('googleLoginError'));
     }
   };
@@ -67,7 +67,7 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
       setShowModal(false);
       setError("");
     } catch (error: unknown) {
-      console.error("Error with email auth:", error);
+      // Error with email auth
       if (error instanceof Error) {
         setError(error.message);
       } else {
@@ -79,8 +79,8 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-    } catch (error) {
-      console.error("Error signing out", error);
+    } catch {
+      // Error signing out
     }
   };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { NDLKotenOCR } from "ndl-koten-ocr-core";
+import { NDLKotenOCR } from "@nakamura196/ndl-koten-ocr-web";
 import { Scan, X, Download, Copy, Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -50,18 +50,13 @@ export function OCRProcessor({ isOpen, onClose, imageUrl, canvasWidth, canvasHei
       try {
         const ocrInstance = new NDLKotenOCR();
         
-        // Load models from public directory
-        await ocrInstance.initialize(
-          "/models/rtmdet-s-1280x1280.onnx",  // Layout detection model
-          {}, // Default config
-          "/models/ndl.yaml",  // Layout config
-          "/models/parseq-ndl-32x384-tiny-10.onnx",  // Text recognition model
-          {}, // Default config
-          "/models/NDLmoji.yaml",  // Recognition config (fixed path)
-          () => {
+        // Use simplified initialization with models from npm package
+        await ocrInstance.init({
+          modelPath: "/node_modules/@nakamura196/ndl-koten-ocr-web/models/",
+          progressCallback: () => {
             // Progress callback if needed
           }
-        );
+        });
         
         setOcr(ocrInstance);
       } catch (err) {
