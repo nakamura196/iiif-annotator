@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import type {
   AnnotoriousOpenSeadragonAnnotator,
   ImageAnnotation,
@@ -31,7 +31,9 @@ import { convertPresentation2 } from "@iiif/parser/presentation-2";
 import { Canvas } from "@iiif/presentation-3";
 import { Export } from "@/components/export";
 import { ManifestViewer } from "@/components/ManifestViewer";
-import { FileJson } from "lucide-react";
+import { OCRProcessor } from "@/components/OCRProcessor";
+import { ScanText } from "lucide-react";
+import Image from "next/image";
 // コンポーネントの動的インポート
 const DynamicAnnotorious = dynamic(
   () => import("@annotorious/react").then((mod) => mod.Annotorious),
@@ -61,6 +63,8 @@ function App() {
   >(null);
 
   const [isManifestViewerOpen, setIsManifestViewerOpen] = useState(false);
+  const [isOCROpen, setIsOCROpen] = useState(false);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string>("");
 
   const anno = useAnnotator<AnnotoriousOpenSeadragonAnnotator>();
 
@@ -100,17 +104,20 @@ function App() {
             if (!annotation) return null;
             const body = annotation.body as {
               id: string;
-              service?: { "@id": string }[];
+              service?: Array<{ "@id"?: string; id?: string; type?: string }>;
             };
 
             if (body.service && body.service.length > 0) {
-              return body.service[0]["@id"] + "/info.json";
-            } else {
-              return {
-                type: "image",
-                url: body.id,
-              };
+              const serviceUrl = body.service[0]["@id"] || body.service[0].id;
+              if (serviceUrl) {
+                return serviceUrl + "/info.json";
+              }
             }
+            
+            return {
+              type: "image",
+              url: body.id,
+            };
           })
           .filter(
             (tileSource: string | { type: string; url: string } | null) =>
@@ -140,6 +147,36 @@ function App() {
     if (currentPage === -1) return;
 
     const canvasId = canvases[currentPage]?.["id"];
+
+    // Get current image URL for OCR
+    const canvas = canvases[currentPage];
+    if (canvas) {
+      const annotationPage = canvas.items?.[0];
+      const annotation = annotationPage?.items?.[0];
+      if (annotation) {
+        const body = annotation.body as {
+          id: string;
+          service?: Array<{ "@id"?: string; id?: string; type?: string }>;
+        };
+        
+        // Try to get the full quality image URL from service if available
+        let imageUrl = body.id;
+        if (body.service && body.service.length > 0) {
+          const service = body.service[0];
+          const serviceUrl = service["@id"] || service.id;
+          if (serviceUrl) {
+            // Check if it's Image API v3 by looking at the type or URL path
+            const isV3 = service.type === "ImageService3" || serviceUrl.includes("/iiif/3/");
+            // Get full resolution image from IIIF Image API
+            // v3 uses "max" instead of "full" for size parameter
+            imageUrl = isV3 
+              ? `${serviceUrl}/full/max/0/default.jpg`
+              : `${serviceUrl}/full/full/0/default.jpg`;
+          }
+        }
+        setCurrentImageUrl(imageUrl);
+      }
+    }
 
     const newAdapter = new FirestoreAnnotationAdapter(canvasId, manifestUrl);
     setAdapter(newAdapter);
@@ -269,6 +306,19 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAnnotationId]);
 
+  // Memoize viewer options before any conditional returns
+  const viewerOptions = useMemo(() => ({
+    prefixUrl:
+      "https://cdn.jsdelivr.net/npm/openseadragon@latest/build/openseadragon/images/",
+    tileSources: infoUrls,
+    gestureSettingsMouse: {
+      clickToZoom: false,
+      dblClickToZoom: false,
+    },
+    sequenceMode: true,
+    initialPage: currentPage,
+  }), [infoUrls, currentPage]);
+
   // ローディング表示
   if (isLoading) {
     return <LoadingScreen message={t('loadingManifest')} />;
@@ -285,18 +335,6 @@ function App() {
       </div>
     );
   }
-
-  const getViewerOptions = (infoUrls: string[]) => ({
-    prefixUrl:
-      "https://cdn.jsdelivr.net/npm/openseadragon@latest/build/openseadragon/images/",
-    tileSources: infoUrls,
-    gestureSettingsMouse: {
-      clickToZoom: false,
-      dblClickToZoom: false,
-    },
-    sequenceMode: true,
-    initialPage: currentPage,
-  });
 
   return (
     <div
@@ -320,12 +358,28 @@ function App() {
             </div>
             <div className="flex gap-2">
               <button
+                onClick={() => setIsOCROpen(true)}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/20 
+                  text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 
+                  transition-colors"
+                title="OCR Text Recognition"
+              >
+                <ScanText className="h-4 w-4" />
+                <span className="hidden sm:inline">OCR</span>
+              </button>
+              <button
                 onClick={() => setIsManifestViewerOpen(true)}
                 className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 
                   dark:hover:text-gray-100 transition-colors"
                 title="View IIIF Manifest"
               >
-                <FileJson className="h-5 w-5" />
+                <Image 
+                  src="/IIIF-logo-colored-text.svg" 
+                  alt="IIIF" 
+                  width={20} 
+                  height={20}
+                  className="opacity-60 hover:opacity-100 transition-opacity"
+                />
               </button>
               <Export adapter={adapter} />
             </div>
@@ -346,7 +400,7 @@ function App() {
 
       {/* メインビューア */}
       <div className="w-full lg:w-2/4 min-h-[50vh] lg:min-h-full flex flex-col">
-        <Viewer tool={tool} options={getViewerOptions(infoUrls)} />
+        <Viewer tool={tool} options={viewerOptions} />
       </div>
 
       {/* 右サイドバー（ツールバーとフォーム） */}
@@ -374,6 +428,76 @@ function App() {
           manifestUrl={manifestUrl}
           isOpen={isManifestViewerOpen}
           onClose={() => setIsManifestViewerOpen(false)}
+        />
+      )}
+      
+      {/* OCR Processor Modal */}
+      {currentImageUrl && (
+        <OCRProcessor
+          imageUrl={currentImageUrl}
+          isOpen={isOCROpen}
+          onClose={() => setIsOCROpen(false)}
+          canvasWidth={(() => {
+            const canvas = canvases[currentPage];
+            if (canvas?.width) return canvas.width;
+            const annotationPage = canvas?.items?.[0];
+            const annotation = annotationPage?.items?.[0];
+            const body = annotation?.body as { width?: number; height?: number };
+            return body?.width || 3026;
+          })()}
+          canvasHeight={(() => {
+            const canvas = canvases[currentPage];
+            if (canvas?.height) return canvas.height;
+            const annotationPage = canvas?.items?.[0];
+            const annotation = annotationPage?.items?.[0];
+            const body = annotation?.body as { width?: number; height?: number };
+            return body?.height || 4583;
+          })()}
+          onTextExtracted={async (text, detections) => {
+            // Create annotations from OCR results
+            if (detections && detections.length > 0 && anno) {
+              for (const detection of detections) {
+                if (detection.box && detection.text) {
+                  const [x, y, width, height] = detection.box;
+                  
+                  // Create annotation in Annotorious format
+                  const newAnnotation = {
+                    id: `ocr-${Date.now()}-${Math.random()}`,
+                    target: {
+                      selector: {
+                        type: "FragmentSelector",
+                        conformsTo: "http://www.w3.org/TR/media-frags/",
+                        value: `xywh=pixel:${x},${y},${width},${height}`
+                      }
+                    },
+                    body: [
+                      {
+                        type: "TextualBody",
+                        value: detection.text,
+                        purpose: "commenting"
+                      }
+                    ]
+                  };
+                  
+                  // Add annotation to Annotorious
+                  anno.addAnnotation(newAnnotation as unknown as ImageAnnotation);
+                  
+                  // Save to Firebase
+                  if (adapter) {
+                    const canvasId = canvases[currentPage]?.["id"];
+                    const iiifAnnotation = convertAnnotoriousToIIIF(
+                      newAnnotation as unknown as ImageAnnotation,
+                      canvasId,
+                      manifestUrl || ""
+                    );
+                    await adapter.create(iiifAnnotation);
+                    setResults([...results, iiifAnnotation]);
+                  }
+                }
+              }
+            }
+            // Don't close automatically - let user review results
+          }}
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Copy, Check, FileJson, Download } from "lucide-react";
+import { X, Copy, Check, FileJson, ExternalLink } from "lucide-react";
 
 interface ManifestViewerProps {
   manifestUrl: string;
@@ -50,18 +50,14 @@ export function ManifestViewer({ manifestUrl, isOpen, onClose }: ManifestViewerP
     }
   };
 
-  const handleDownload = () => {
+  const handleOpenInBrowser = () => {
     if (!manifest) return;
     
     const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "manifest.json";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    window.open(url, '_blank');
+    // Clean up after a delay to ensure the tab has loaded
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   if (!isOpen) return null;
@@ -91,12 +87,12 @@ export function ManifestViewer({ manifestUrl, isOpen, onClose }: ManifestViewerP
               )}
             </button>
             <button
-              onClick={handleDownload}
+              onClick={handleOpenInBrowser}
               className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 
                 dark:hover:text-gray-100 transition-colors"
-              title="Download JSON"
+              title="Open in Browser"
             >
-              <Download className="h-5 w-5" />
+              <ExternalLink className="h-5 w-5" />
             </button>
             <button
               onClick={onClose}

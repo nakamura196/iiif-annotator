@@ -21,8 +21,8 @@ export default function Header() {
   const router = useRouter();
   const t = useTranslations();
   
-  const collectionUrl = searchParams.get("u");
-  const isItemPage = pathname === "/item" || pathname === "/en/item";
+  const collectionUrl = searchParams.get("from") || searchParams.get("u");
+  const isItemPage = pathname.includes("/item");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {

@@ -61,6 +61,8 @@
     "exportManifest": "IIIFマニフェストファイル形式でダウンロード",
     "exportTEI": "TEI/XML形式でダウンロード",
     "exportJSON": "JSON形式でダウンロード",
+    "openInBrowser": "ブラウザで開く",
+    "downloadFile": "ファイルをダウンロード",
     "noAnnotations": "アノテーションがありません",
     "tools": {
       "move": "移動",
@@ -92,5 +94,22 @@
   "HelpPage": {
     "title": "使い方ガイド",
     "backToHome": "ホームに戻る"
+  },
+  "OCRProcessor": {
+    "title": "文字認識 (OCR)",
+    "process": "処理",
+    "processing": "処理中...",
+    "initializing": "OCRエンジンを初期化中...",
+    "applyAsAnnotations": "アノテーションとして適用",
+    "close": "閉じる",
+    "copy": "コピー",
+    "copied": "コピーしました！",
+    "download": "ダウンロード",
+    "outputFormat": "出力形式",
+    "text": "テキスト",
+    "json": "JSON",
+    "xml": "XML",
+    "error": "エラー",
+    "noResult": "テキストが検出されませんでした"
   }
 }

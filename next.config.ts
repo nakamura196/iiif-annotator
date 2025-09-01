@@ -6,6 +6,65 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const nextConfig: NextConfig = {
   /* config options here */
   // trailingSlash: true,
+  webpack: (config, { isServer }) => {
+    // Add support for WebAssembly
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+      layers: true,
+    };
+
+    // Add rules for WebAssembly and ONNX files
+    config.module.rules.push({
+      test: /\.wasm$/,
+      type: "asset/resource",
+    });
+    
+    config.module.rules.push({
+      test: /\.onnx$/,
+      type: 'asset/resource'
+    });
+
+    // Client-side specific config
+    if (!isServer) {
+      // Make onnxruntime-web external and use global
+      config.externals = {
+        ...config.externals,
+        'onnxruntime-web': 'ort'
+      };
+      
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false
+      };
+      
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        "onnxruntime-node": false,
+      };
+    }
+
+    return config;
+  },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless'
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin'
+          }
+        ]
+      }
+    ];
+  }
 };
 
 export default withNextIntl(nextConfig);

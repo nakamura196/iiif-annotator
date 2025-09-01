@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, ChevronLeft, Folder, FileText, Grid3x3, List, ExternalLink } from "lucide-react";
 import { convertPresentation2 } from "@iiif/parser/presentation-2";
+import Image from "next/image";
+import { ManifestViewer } from "@/components/ManifestViewer";
 
 // IIIF Presentation API v3 types
 interface IIIFV3Item {
@@ -47,6 +49,7 @@ function CollectionContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [isManifestViewerOpen, setIsManifestViewerOpen] = useState(false);
   const t = useTranslations();
 
   useEffect(() => {
@@ -182,7 +185,7 @@ function CollectionContent() {
       const query = new URLSearchParams();
       query.set("manifest", itemUrl);
       if (collectionUrl) {
-        query.set("u", collectionUrl);
+        query.set("from", collectionUrl); // Add 'from' parameter for back navigation
       }
       router.push(`/item?${query.toString()}`);
     }
@@ -241,9 +244,26 @@ function CollectionContent() {
         </button>
       </div>
 
-      <h1 className="text-2xl font-bold mb-2">
-        {collection ? getLabel(collection.label) : t('CollectionPage.title')}
-      </h1>
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-2xl font-bold">
+          {collection ? getLabel(collection.label) : t('CollectionPage.title')}
+        </h1>
+        {collectionUrl && (
+          <button
+            onClick={() => setIsManifestViewerOpen(true)}
+            className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 
+              dark:hover:text-gray-100 transition-colors"
+            title="View JSON"
+          >
+            <Image 
+              src="/IIIF-logo-colored-text.svg" 
+              alt="IIIF" 
+              width={40} 
+              height={20} 
+            />
+          </button>
+        )}
+      </div>
       
       {collection?.summary && (
         <p className="text-gray-600 dark:text-gray-400 mb-6">
@@ -437,6 +457,15 @@ function CollectionContent() {
             </div>
           )}
         </>
+      )}
+      
+      {/* Manifest Viewer Modal */}
+      {collectionUrl && (
+        <ManifestViewer
+          manifestUrl={collectionUrl}
+          isOpen={isManifestViewerOpen}
+          onClose={() => setIsManifestViewerOpen(false)}
+        />
       )}
     </div>
   );

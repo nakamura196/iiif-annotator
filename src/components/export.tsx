@@ -6,6 +6,7 @@ import { createTEI } from "@/lib/utils/export/tei/createTEI";
 import { AnnotationWidthSingleBody } from "@/types/annotation";
 import { createManifest } from "@/lib/utils/export/manifest/createManifest";
 import { useTranslations } from 'next-intl';
+import { ExternalLink, Download } from 'lucide-react';
 export const Export = ({
   adapter,
 }: {
@@ -26,7 +27,8 @@ export const Export = ({
   }, []);
 
   const exportAnnotations = async (
-    format: "json" | "csv" | "tei" | "manifest"
+    format: "json" | "csv" | "tei" | "manifest",
+    openInBrowser: boolean = false
   ) => {
     if (!adapter) return;
     const annotations = await adapter.export();
@@ -70,12 +72,22 @@ export const Export = ({
 
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const now = new Date().toISOString().replace(/[-:Z]/g, "");
-    a.download = `${fileName}-${now}.${extension}`;
-    a.click();
-    URL.revokeObjectURL(url);
+    
+    if (openInBrowser) {
+      // Open in new tab
+      window.open(url, '_blank');
+      // Clean up after a delay to ensure the tab has loaded
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } else {
+      // Download file
+      const a = document.createElement("a");
+      a.href = url;
+      const now = new Date().toISOString().replace(/[-:Z]/g, "");
+      a.download = `${fileName}-${now}.${extension}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    
     setIsOpen(false);
   };
 
@@ -106,44 +118,82 @@ export const Export = ({
 
       {isOpen && (
         <div
-          className="absolute right-0 mt-2 w-48 rounded-md shadow-lg 
-          bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5"
+          className="absolute right-0 mt-2 w-64 rounded-md shadow-lg 
+          bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-50"
         >
           <div className="py-1" role="menu">
+            {/* IIIF Manifest */}
+            <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              IIIF Manifest
+            </div>
             <button
-              onClick={() => exportAnnotations("manifest")}
+              onClick={() => exportAnnotations("manifest", true)}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 
-                hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2"
               role="menuitem"
             >
-              {t('exportManifest')}
+              <ExternalLink className="h-4 w-4" />
+              {t('openInBrowser')}
             </button>
             <button
-              onClick={() => exportAnnotations("tei")}
+              onClick={() => exportAnnotations("manifest", false)}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 
-                hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2"
               role="menuitem"
             >
-              {t('exportTEI')}
+              <Download className="h-4 w-4" />
+              {t('downloadFile')}
+            </button>
+            
+            <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+            
+            {/* TEI/XML */}
+            <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              TEI/XML
+            </div>
+            <button
+              onClick={() => exportAnnotations("tei", true)}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 
+                hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2"
+              role="menuitem"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {t('openInBrowser')}
             </button>
             <button
-              onClick={() => exportAnnotations("json")}
+              onClick={() => exportAnnotations("tei", false)}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 
-                hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2"
               role="menuitem"
             >
-              {t('exportJSON')}
+              <Download className="h-4 w-4" />
+              {t('downloadFile')}
             </button>
-            {/*
+            
+            <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+            
+            {/* JSON */}
+            <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              JSON
+            </div>
             <button
-              onClick={() => exportAnnotations("txt")}
+              onClick={() => exportAnnotations("json", true)}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 
-                hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2"
               role="menuitem"
             >
-              テキスト形式でダウンロード
+              <ExternalLink className="h-4 w-4" />
+              {t('openInBrowser')}
             </button>
-            */}
+            <button
+              onClick={() => exportAnnotations("json", false)}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 
+                hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2"
+              role="menuitem"
+            >
+              <Download className="h-4 w-4" />
+              {t('downloadFile')}
+            </button>
           </div>
         </div>
       )}

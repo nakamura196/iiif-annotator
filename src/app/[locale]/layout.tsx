@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import "../globals.css";
 import ThemeProvider from "@/app/theme-provider";
 import { routing } from '@/i18n/routing';
+import Script from 'next/script';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -78,6 +79,13 @@ export default async function RootLayout({
   const messages = await getMessages();
   return (
     <html lang={locale} className="h-full" suppressHydrationWarning>
+      <head>
+        <Script
+          src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"
+          strategy="beforeInteractive"
+        />
+        <Script src="/ort-init.js" strategy="beforeInteractive" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} 
           antialiased min-h-screen flex flex-col`}

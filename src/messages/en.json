@@ -61,6 +61,8 @@
     "exportManifest": "Download as IIIF Manifest",
     "exportTEI": "Download as TEI/XML",
     "exportJSON": "Download as JSON",
+    "openInBrowser": "Open in Browser",
+    "downloadFile": "Download File",
     "noAnnotations": "No annotations",
     "tools": {
       "move": "Move",
@@ -92,5 +94,22 @@
   "HelpPage": {
     "title": "User Guide",
     "backToHome": "Back to Home"
+  },
+  "OCRProcessor": {
+    "title": "Text Recognition (OCR)",
+    "process": "Process",
+    "processing": "Processing...",
+    "initializing": "Initializing OCR engine...",
+    "applyAsAnnotations": "Apply as Annotations",
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "download": "Download",
+    "outputFormat": "Output Format",
+    "text": "Text",
+    "json": "JSON",
+    "xml": "XML",
+    "error": "Error",
+    "noResult": "No text detected"
   }
 }

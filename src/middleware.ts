@@ -12,6 +12,8 @@ export const config = {
     // Skip all internal paths (_next)
     // Skip all API routes
     // Skip all static files (images, fonts, etc.)
-    '/((?!_next|api|favicon.ico|.*\\..*).*)'
+    // Skip models and config directories for OCR
+    // Skip ONNX runtime files
+    '/((?!_next|api|favicon.ico|models|config|.*\\..*|ort-.*|.*\\.wasm|.*\\.onnx).*)'
   ]
 };

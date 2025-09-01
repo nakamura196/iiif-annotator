@@ -40,3 +40,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 nextjs-i18n-themes-ssr-template/
+
+# OCR models and config files
+/public/models/
+/public/config/
+
+# ONNX Runtime files (loaded from CDN)
+/public/ort*.mjs
+/public/ort*.wasm
+/public/ort-init.js
