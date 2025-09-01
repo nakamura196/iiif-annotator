@@ -187,11 +187,17 @@ function App() {
       setResults(result.items as Annotation[]);
 
       // アノテーションを変換して設定
-      const annotoriousAnnotations = convertMultipleAnnotations(
-        result.items as AnnotationWidthSingleBody[]
-      );
+      try {
+        const annotoriousAnnotations = convertMultipleAnnotations(
+          result.items as AnnotationWidthSingleBody[]
+        );
 
-      anno.setAnnotations(annotoriousAnnotations);
+        if (annotoriousAnnotations.length > 0) {
+          anno.setAnnotations(annotoriousAnnotations);
+        }
+      } catch (error) {
+        console.error("Failed to set annotations:", error);
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anno, currentPage, user]);

@@ -10,27 +10,47 @@ export function convertMultipleAnnotations(
 ): ImageAnnotation[] {
   return annotationsArray
     .map((selectors) => {
-      if (!selectors.target.selector) {
+      try {
+        if (!selectors.target.selector) {
+          return null;
+        }
+        const selectorText = JSON.stringify(selectors.target.selector);
+        if (selectorText.includes("xywh=0,0,0,0")) {
+          return null;
+        }
+        
+        // Validate SVG selector if present
+        const svgSelector = selectors.target.selector.find(
+          (s: any) => s.type === "SvgSelector"
+        );
+        if (svgSelector && svgSelector.value) {
+          // Check if the SVG contains valid path or polygon data
+          const hasValidPath = svgSelector.value.includes('<path') || 
+                              svgSelector.value.includes('<polygon');
+          if (!hasValidPath) {
+            console.warn(`Invalid SVG selector for annotation ${selectors.id}:`, svgSelector.value);
+            return null;
+          }
+        }
+        
+        const result: AnnotationWidthSingleBody = {
+          id: selectors.id,
+          motivation: selectors.motivation,
+          type: selectors.type,
+          body: {
+            type: selectors.body.type,
+            value: selectors.body.value || "",
+          },
+          target: {
+            selector: selectors.target.selector.reverse(),
+            source: selectors.target.source,
+          },
+        };
+        return result as unknown as ImageAnnotation;
+      } catch (error) {
+        console.warn(`Failed to convert annotation ${selectors.id}:`, error);
         return null;
       }
-      const selectorText = JSON.stringify(selectors.target.selector);
-      if (selectorText.includes("xywh=0,0,0,0")) {
-        return null;
-      }
-      const result: AnnotationWidthSingleBody = {
-        id: selectors.id,
-        motivation: selectors.motivation,
-        type: selectors.type,
-        body: {
-          type: selectors.body.type,
-          value: selectors.body.value || "",
-        },
-        target: {
-          selector: selectors.target.selector.reverse(),
-          source: selectors.target.source,
-        },
-      };
-      return result as unknown as ImageAnnotation;
     })
     .filter((annotation) => annotation !== null);
 }
@@ -81,68 +101,104 @@ const convertTarget = (
 };
 
 const convertPolygonToPath = (svg: string) => {
-  // polygonのpoints属性を抽出
-  const polygonMatch = svg.match(/<polygon points="([^"]+)"/);
-  if (!polygonMatch) throw new Error("Polygon not found");
-
-  const pointsStr = polygonMatch[1];
-
-  // スペースで区切られたpoint pairs (x,y)を分割
-  const pointPairs = pointsStr.split(" ");
-
-  // pathのd属性を構築
-  let pathD = "";
-
-  pointPairs.forEach((pair: string, index: number) => {
-    const [x, y] = pair.split(",").map(Number);
-
-    // 最初のポイントはMoveToコマンド、それ以降はLineToコマンド
-    if (index === 0) {
-      pathD += `M ${x} ${y}`;
-    } else {
-      pathD += ` L ${x} ${y}`;
+  try {
+    // polygonのpoints属性を抽出
+    const polygonMatch = svg.match(/<polygon points="([^"]+)"/);
+    if (!polygonMatch) {
+      // If no polygon found, return original SVG
+      return svg;
     }
-  });
 
-  // ポリゴンを閉じる
-  pathD += " Z";
+    const pointsStr = polygonMatch[1];
 
-  // 元のSVGからpolygon要素をpath要素に置き換える
-  const newSvg = svg.replace(/<polygon points="[^"]+"/, `<path d="${pathD}"`);
+    // スペースで区切られたpoint pairs (x,y)を分割
+    const pointPairs = pointsStr.split(/\s+/).filter(pair => pair.length > 0);
 
-  return newSvg;
+    // pathのd属性を構築
+    let pathD = "";
+
+    pointPairs.forEach((pair: string, index: number) => {
+      const coords = pair.split(",");
+      if (coords.length !== 2) return; // Skip invalid pairs
+      
+      const [x, y] = coords.map(Number);
+      if (isNaN(x) || isNaN(y)) return; // Skip invalid numbers
+
+      // 最初のポイントはMoveToコマンド、それ以降はLineToコマンド
+      if (index === 0) {
+        pathD += `M ${x} ${y}`;
+      } else {
+        pathD += ` L ${x} ${y}`;
+      }
+    });
+
+    // ポリゴンを閉じる
+    if (pathD) {
+      pathD += " Z";
+    }
+
+    // 元のSVGからpolygon要素をpath要素に置き換える
+    const newSvg = svg.replace(/<polygon points="[^"]+"/, `<path d="${pathD}"`);
+
+    return newSvg;
+  } catch (error) {
+    console.warn("Failed to convert polygon to path:", error);
+    return svg; // Return original on error
+  }
 };
 
 const convertToXywh = (svg: string) => {
-  const polygonMatch = svg.match(/<polygon points="([^"]+)"/);
-  if (!polygonMatch) throw new Error("Polygon not found");
+  try {
+    const polygonMatch = svg.match(/<polygon points="([^"]+)"/);
+    if (!polygonMatch) {
+      // Try to extract from path element if polygon not found
+      const pathMatch = svg.match(/<path[^>]*d="([^"]+)"/);
+      if (!pathMatch) {
+        throw new Error("Neither polygon nor path found in SVG");
+      }
+      // For now, return a default bounding box for paths
+      // This could be improved to parse path commands
+      return { x: 0, y: 0, w: 100, h: 100 };
+    }
 
-  // Split into pairs, then extract individual coordinates
-  const pointPairs = polygonMatch[1].split(" ");
-  const coordinates = pointPairs.map((pair) => {
-    const [x, y] = pair.split(",").map(Number);
-    return { x, y };
-  });
+    // Split into pairs, then extract individual coordinates
+    const pointPairs = polygonMatch[1].split(/\s+/).filter(pair => pair.length > 0);
+    const coordinates = pointPairs.map((pair) => {
+      const coords = pair.split(",");
+      if (coords.length !== 2) return null;
+      const [x, y] = coords.map(Number);
+      if (isNaN(x) || isNaN(y)) return null;
+      return { x, y };
+    }).filter(coord => coord !== null) as { x: number; y: number }[];
 
-  // Extract min/max values
-  const xValues = coordinates.map((coord) => coord.x);
-  const yValues = coordinates.map((coord) => coord.y);
+    if (coordinates.length === 0) {
+      throw new Error("No valid coordinates found");
+    }
 
-  const minX = Math.min(...xValues);
-  const minY = Math.min(...yValues);
-  const maxX = Math.max(...xValues);
-  const maxY = Math.max(...yValues);
+    // Extract min/max values
+    const xValues = coordinates.map((coord) => coord.x);
+    const yValues = coordinates.map((coord) => coord.y);
 
-  // Calculate width and height
-  const width = maxX - minX;
-  const height = maxY - minY;
+    const minX = Math.min(...xValues);
+    const minY = Math.min(...yValues);
+    const maxX = Math.max(...xValues);
+    const maxY = Math.max(...yValues);
 
-  return {
-    x: parseInt(minX.toString()),
-    y: parseInt(minY.toString()),
-    w: parseInt(width.toString()),
-    h: parseInt(height.toString()),
-  };
+    // Calculate width and height
+    const width = maxX - minX;
+    const height = maxY - minY;
+
+    return {
+      x: parseInt(minX.toString()),
+      y: parseInt(minY.toString()),
+      w: parseInt(width.toString()),
+      h: parseInt(height.toString()),
+    };
+  } catch (error) {
+    console.warn("Failed to convert SVG to xywh:", error);
+    // Return a default bounding box on error
+    return { x: 0, y: 0, w: 100, h: 100 };
+  }
 };
 
 /**
@@ -190,28 +246,39 @@ const convertSelector = (selector: { type: string; value: string }) => {
     value: string;
   }[] = [];
 
-  if (selector.type === "FragmentSelector") {
-    const value = selector.value.replace("pixel:", "");
-    selectors.push({
-      type: "FragmentSelector",
-      value: value,
-    });
-    selectors.push({
-      type: "SvgSelector",
-      value: xywhToSvgPath(value),
-    });
-  } else if (selector.type === "SvgSelector") {
-    const { x, y, w, h } = convertToXywh(selector.value);
+  try {
+    if (selector.type === "FragmentSelector") {
+      const value = selector.value.replace("pixel:", "");
+      selectors.push({
+        type: "FragmentSelector",
+        value: value,
+      });
+      
+      try {
+        selectors.push({
+          type: "SvgSelector",
+          value: xywhToSvgPath(value),
+        });
+      } catch (error) {
+        console.warn("Failed to convert xywh to SVG path:", error);
+      }
+    } else if (selector.type === "SvgSelector") {
+      const { x, y, w, h } = convertToXywh(selector.value);
 
-    selectors.push({
-      type: "FragmentSelector",
-      value: `xywh=${x},${y},${w},${h}`,
-    });
+      selectors.push({
+        type: "FragmentSelector",
+        value: `xywh=${x},${y},${w},${h}`,
+      });
 
-    selectors.push({
-      type: "SvgSelector",
-      value: convertPolygonToPath(selector.value),
-    });
+      selectors.push({
+        type: "SvgSelector",
+        value: convertPolygonToPath(selector.value),
+      });
+    }
+  } catch (error) {
+    console.warn("Failed to convert selector:", error);
+    // Return at least the original selector
+    selectors.push(selector);
   }
 
   return selectors;

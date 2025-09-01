@@ -6,6 +6,13 @@
     "help": "ヘルプ"
   },
   "HomePage": {
+    "warning": {
+      "title": "重要なお知らせ",
+      "description": "本サービスはGoogle Firebaseの無料枠を使用しており、以下の制限事項があります：",
+      "point1": "アノテーションデータはFirestoreに保存されますが、永続的な保存は保証されません",
+      "point2": "無料枠の制限により、データが削除される可能性があります",
+      "point3": "重要なデータは定期的にエクスポート機能でバックアップすることを強く推奨します"
+    },
     "manifest": {
       "title": "マニフェストを編集",
       "description": "IIIFマニフェストURLを入力して編集画面へ",
@@ -110,6 +117,10 @@
     "json": "JSON",
     "xml": "XML",
     "error": "エラー",
-    "noResult": "テキストが検出されませんでした"
+    "noResult": "テキストが検出されませんでした",
+    "description": "本アプリはNDL古典籍OCR-liteのWeb移植版です。",
+    "clickToProcess": "クリックして画像から文字を抽出",
+    "credit": "開発者：橋本雄太（国立歴史民俗博物館, @yuta1984）",
+    "githubLink": "GitHubリポジトリ"
   }
 }

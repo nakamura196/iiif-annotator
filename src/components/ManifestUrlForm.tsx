@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
+import { AlertTriangle } from 'lucide-react';
 
 export function ManifestUrlForm() {
   const [manifestUrl, setManifestUrl] = useState("");
@@ -45,6 +46,26 @@ export function ManifestUrlForm() {
           >
             {t('Common.title')}
           </h2>
+        </div>
+
+        {/* Firebase Free Tier Warning */}
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5 flex-shrink-0" />
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-400">
+                {t('HomePage.warning.title')}
+              </h3>
+              <p className="text-sm text-amber-700 dark:text-amber-300 leading-relaxed">
+                {t('HomePage.warning.description')}
+              </p>
+              <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1 list-disc list-inside">
+                <li>{t('HomePage.warning.point1')}</li>
+                <li>{t('HomePage.warning.point2')}</li>
+                <li>{t('HomePage.warning.point3')}</li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
