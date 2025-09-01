@@ -50,9 +50,9 @@ export function OCRProcessor({ isOpen, onClose, imageUrl, canvasWidth, canvasHei
       try {
         const ocrInstance = new NDLKotenOCR();
         
-        // Use simplified initialization with models from npm package
+        // Use models from public directory for Vercel deployment
         await ocrInstance.init({
-          modelPath: "/node_modules/@nakamura196/ndl-koten-ocr-web/models/",
+          modelPath: "/models/",
           progressCallback: () => {
             // Progress callback if needed
           }
