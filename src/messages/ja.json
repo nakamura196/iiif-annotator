@@ -96,7 +96,16 @@
   },
   "AnnotationList": {
     "annotations": "アノテーション",
-    "noAnnotations": "アノテーションがありません"
+    "noAnnotations": "アノテーションがありません",
+    "emptyText": "（テキストなし）",
+    "focusAnnotation": "アノテーションにフォーカス",
+    "sortNewest": "新しい順",
+    "sortOldest": "古い順",
+    "sortTextAsc": "名前順（昇順）",
+    "sortTextDesc": "名前順（降順）",
+    "locale": "ja",
+    "created": "作成",
+    "modified": "更新"
   },
   "HelpPage": {
     "title": "使い方ガイド",

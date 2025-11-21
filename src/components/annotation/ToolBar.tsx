@@ -1,5 +1,6 @@
 import { Move, Square, TriangleRight } from "lucide-react";
 import { useTranslations } from 'next-intl';
+import { useEffect } from 'react';
 
 interface ToolBarProps {
   tool: "rectangle" | "polygon" | undefined;
@@ -8,7 +9,48 @@ interface ToolBarProps {
 
 export function ToolBar({ tool, setTool }: ToolBarProps) {
   const t = useTranslations('Editor.tools');
-  
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input/textarea
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      let handled = false;
+
+      switch (key) {
+        case 'm':
+          setTool(undefined);
+          handled = true;
+          break;
+        case 'b':
+          setTool('rectangle');
+          handled = true;
+          break;
+        case 'p':
+          setTool('polygon');
+          handled = true;
+          break;
+      }
+
+      if (handled) {
+        e.preventDefault();
+        // Remove focus from any focused element to prevent blue outline
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setTool]);
+
   return (
     <div
       className="px-2 sm:px-4 py-2 sm:py-3 bg-gray-50 dark:bg-gray-800 

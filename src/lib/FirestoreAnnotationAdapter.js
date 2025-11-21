@@ -101,13 +101,17 @@ export default class FirestoreAnnotationAdapter {
       throw new Error("アノテーションが見つかりません");
     }
 
-    if (docSnap.data().userId !== user.uid) {
+    const existingData = docSnap.data();
+
+    if (existingData.userId !== user.uid) {
       throw new Error("このアノテーションを編集する権限がありません");
     }
 
     const annotationData = {
       ...annotation,
       manifestId: this.manifestId,
+      // Preserve the original created timestamp, or set it now if it doesn't exist
+      created: existingData.created || new Date(),
       modified: new Date(),
     };
 
@@ -166,7 +170,51 @@ export default class FirestoreAnnotationAdapter {
     );
 
     const querySnapshot = await getDocs(q);
-    const annotations = querySnapshot.docs.map((snapshot) => snapshot.data());
+    const annotations = querySnapshot.docs.map((snapshot) => {
+      const data = snapshot.data();
+
+      // Helper function to convert timestamp to serializable format
+      const convertTimestamp = (timestamp) => {
+        if (!timestamp) return undefined;
+
+        // If it's a Firestore Timestamp (check for toDate method)
+        if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+          const date = timestamp.toDate();
+          return {
+            seconds: Math.floor(date.getTime() / 1000),
+            nanoseconds: (date.getTime() % 1000) * 1000000,
+            type: "firestore/timestamp/1.0"
+          };
+        }
+
+        // If it's a Firestore Timestamp with seconds property
+        if (timestamp.seconds !== undefined && timestamp.nanoseconds !== undefined) {
+          return {
+            seconds: timestamp.seconds,
+            nanoseconds: timestamp.nanoseconds,
+            type: "firestore/timestamp/1.0"
+          };
+        }
+
+        // If it's a JavaScript Date object
+        if (timestamp instanceof Date) {
+          return {
+            seconds: Math.floor(timestamp.getTime() / 1000),
+            nanoseconds: (timestamp.getTime() % 1000) * 1000000,
+            type: "firestore/timestamp/1.0"
+          };
+        }
+
+        return undefined;
+      };
+
+      // Convert Firestore Timestamps to serializable format
+      return {
+        ...data,
+        created: convertTimestamp(data.created),
+        modified: convertTimestamp(data.modified),
+      };
+    });
 
     return {
       id: this.annotationPageId,

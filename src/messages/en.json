@@ -96,7 +96,16 @@
   },
   "AnnotationList": {
     "annotations": "Annotations",
-    "noAnnotations": "No annotations"
+    "noAnnotations": "No annotations",
+    "emptyText": "(No text)",
+    "focusAnnotation": "Focus on annotation",
+    "sortNewest": "Newest first",
+    "sortOldest": "Oldest first",
+    "sortTextAsc": "Text (A-Z)",
+    "sortTextDesc": "Text (Z-A)",
+    "locale": "en",
+    "created": "Created",
+    "modified": "Modified"
   },
   "HelpPage": {
     "title": "User Guide",

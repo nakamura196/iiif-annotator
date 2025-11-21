@@ -284,6 +284,84 @@ function App() {
     }
   }, []);
 
+  // Focus on annotation by navigating viewport
+  const handleFocus = useCallback((annotationId: string) => {
+    if (!anno) return;
+
+    const annotation = anno.getAnnotations().find((a) => a.id === annotationId);
+    if (!annotation) {
+      return;
+    }
+
+    const selector = (annotation.target as { selector?: { value?: string } })?.selector;
+    if (!selector?.value) {
+      return;
+    }
+
+    let x: number, y: number, w: number, h: number;
+
+    // Parse xywh format: "xywh=pixel:x,y,w,h"
+    const xywhMatch = selector.value.match(/xywh=pixel:(\d+),(\d+),(\d+),(\d+)/);
+    if (xywhMatch) {
+      [, x, y, w, h] = xywhMatch.map(Number);
+    } else {
+      // Parse SVG polygon format: <svg><polygon points="x1,y1 x2,y2 ..."/></svg>
+      const polygonMatch = selector.value.match(/points="([^"]+)"/);
+      if (!polygonMatch) {
+        return;
+      }
+
+      // Extract all coordinate pairs
+      const points = polygonMatch[1].split(/[\s,]+/).map(Number);
+
+      // Calculate bounding box
+      const xCoords: number[] = [];
+      const yCoords: number[] = [];
+      for (let i = 0; i < points.length; i += 2) {
+        xCoords.push(points[i]);
+        yCoords.push(points[i + 1]);
+      }
+
+      const minX = Math.min(...xCoords);
+      const maxX = Math.max(...xCoords);
+      const minY = Math.min(...yCoords);
+      const maxY = Math.max(...yCoords);
+
+      x = minX;
+      y = minY;
+      w = maxX - minX;
+      h = maxY - minY;
+    }
+
+    // Get image dimensions from OpenSeadragon
+    const viewer = anno.viewer;
+    const tiledImage = viewer.world.getItemAt(0);
+    if (!tiledImage) {
+      return;
+    }
+
+    // Dynamically import OpenSeadragon
+    import('openseadragon').then((OSD) => {
+      // Calculate center point of annotation in image coordinates
+      const centerX = x + w / 2;
+      const centerY = y + h / 2;
+
+      // Create point in image coordinates
+      const imagePoint = new OSD.default.Point(centerX, centerY);
+
+      // Convert from image coordinates to viewport coordinates
+      const viewportPoint = tiledImage.imageToViewportCoordinates(imagePoint);
+
+      // Select the annotation first
+      setSelectedAnnotationId(annotationId);
+
+      // Pan to the center of annotation smoothly without zooming
+      viewer.viewport.panTo(viewportPoint, false);
+    }).catch((error) => {
+      console.error('Failed to load OpenSeadragon:', error);
+    });
+  }, [anno]);
+
   const handleChange = async (text: string) => {
     const updatedAnnotation = anno
       ?.getAnnotations()
@@ -309,13 +387,19 @@ function App() {
     );
 
     if (ex) {
-      await adapter?.update(iiifAnnotation);
+      const updated = await adapter?.update(iiifAnnotation);
+      if (updated) {
+        setResults(updated.items as Annotation[]);
+      }
     } else {
-      await adapter?.create(iiifAnnotation);
-      setResults([...results, iiifAnnotation]);
+      const created = await adapter?.create(iiifAnnotation);
+      if (created) {
+        setResults(created.items as Annotation[]);
+      }
     }
 
     setTool(undefined);
+    setSelectedAnnotationId(null);
   };
 
   useEffect(() => {
@@ -323,6 +407,47 @@ function App() {
       setSelectedAnnotationId(selection.selected[0].annotation.id);
     }
   }, [selection]);
+
+  // Keyboard shortcut to focus text editor
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if Ctrl+S (Windows/Linux) or Cmd+S (Mac) is pressed
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        // Only trigger if annotation is selected
+        if (selectedAnnotationId) {
+          e.preventDefault();
+          // Trigger form submission
+          const form = document.querySelector('form') as HTMLFormElement;
+          if (form) {
+            form.requestSubmit();
+          }
+        }
+        return;
+      }
+
+      // Ignore if user is typing in an input/textarea
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+
+      // Focus text editor when T is pressed and a tool is selected or annotation is selected
+      if (key === 't' && (tool !== undefined || selectedAnnotationId)) {
+        const editorElement = document.querySelector('.ck-editor__editable') as HTMLElement;
+        if (editorElement) {
+          editorElement.focus();
+          e.preventDefault();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [tool, selectedAnnotationId]);
 
   useEffect(() => {
     if (!anno) return;
@@ -338,9 +463,33 @@ function App() {
         }
       });
       anno.setSelected(selectedAnnotationId);
+    } else {
+      // Clear Annotorious selection when selectedAnnotationId is null
+      anno.cancelSelected();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAnnotationId]);
+
+  // Auto-focus text editor when new annotation is created
+  useEffect(() => {
+    if (!anno) return;
+
+    const handleCreateAnnotation = () => {
+      // Wait for DOM to update, then focus the editor
+      setTimeout(() => {
+        const editorElement = document.querySelector('.ck-editor__editable') as HTMLElement;
+        if (editorElement) {
+          editorElement.focus();
+        }
+      }, 100);
+    };
+
+    anno.on('createAnnotation', handleCreateAnnotation);
+
+    return () => {
+      anno.off('createAnnotation', handleCreateAnnotation);
+    };
+  }, [anno]);
 
   // Memoize viewer options before any conditional returns
   const viewerOptions = useMemo(() => ({
@@ -374,15 +523,16 @@ function App() {
 
   return (
     <div
-      className="flex flex-col lg:flex-row h-full min-h-[calc(100vh-8rem)]
+      className="flex flex-col lg:flex-row h-[calc(100vh-8rem)]
       bg-white dark:bg-gray-900"
     >
       {/* サイドバー（アノテーションリスト） */}
       <div
-        className="w-full lg:w-1/4 border-b lg:border-b-0 lg:border-r 
-        border-gray-200 dark:border-gray-700 flex flex-col"
+        className="w-full lg:w-1/4 h-[50vh] lg:h-full
+        border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-700
+        flex flex-col overflow-hidden"
       >
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           {/* Header - Responsive layout */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
             {/* Title and page info with navigation */}
@@ -459,17 +609,15 @@ function App() {
             </div>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
-          <AnnotationList
-            annotations={
-              (anno?.getAnnotations() as unknown as AnnotationWithMultipleBodies[]) ||
-              []
-            }
-            onDelete={handleDelete}
-            onSelect={handleSelect}
-            selectedId={selectedAnnotationId || undefined}
-          />
-        </div>
+        <AnnotationList
+          annotations={
+            results as unknown as AnnotationWithMultipleBodies[]
+          }
+          onDelete={handleDelete}
+          onSelect={handleSelect}
+          onFocus={handleFocus}
+          selectedId={selectedAnnotationId || undefined}
+        />
       </div>
 
       {/* メインビューア */}
