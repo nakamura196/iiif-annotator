@@ -597,11 +597,12 @@ function App() {
                   dark:hover:text-gray-100 transition-colors"
                 title="View IIIF Manifest"
               >
-                <Image 
-                  src="/IIIF-logo-colored-text.svg" 
-                  alt="IIIF" 
-                  width={20} 
+                <Image
+                  src="/IIIF-logo-colored-text.svg"
+                  alt="IIIF"
+                  width={20}
                   height={20}
+                  style={{ height: "auto" }}
                   className="opacity-60 hover:opacity-100 transition-opacity"
                 />
               </button>

@@ -255,11 +255,12 @@ function CollectionContent() {
               dark:hover:text-gray-100 transition-colors"
             title="View JSON"
           >
-            <Image 
-              src="/IIIF-logo-colored-text.svg" 
-              alt="IIIF" 
-              width={40} 
-              height={20} 
+            <Image
+              src="/IIIF-logo-colored-text.svg"
+              alt="IIIF"
+              width={40}
+              height={20}
+              style={{ height: "auto" }}
             />
           </button>
         )}

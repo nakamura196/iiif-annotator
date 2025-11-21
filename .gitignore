@@ -48,4 +48,3 @@ nextjs-i18n-themes-ssr-template/
 # ONNX Runtime files (loaded from CDN)
 /public/ort*.mjs
 /public/ort*.wasm
-/public/ort-init.js
