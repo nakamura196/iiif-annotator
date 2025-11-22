@@ -1,6 +1,6 @@
 import type { AnnotationWithMultipleBodies } from "@/types/annotation";
 import { useTranslations } from 'next-intl';
-import { Crosshair } from 'lucide-react';
+import { Crosshair, Trash2, CheckSquare, Square } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
 interface AnnotationListProps {
@@ -66,10 +66,13 @@ export function AnnotationList({
   annotations,
   onSelect,
   onFocus,
+  onDelete,
   selectedId,
 }: AnnotationListProps) {
   const t = useTranslations('AnnotationList');
-  const [sortOption, setSortOption] = useState<SortOption>('created-desc');
+  const [sortOption, setSortOption] = useState<SortOption>('created-asc');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
   const locale = t('locale') || 'en';
 
   // Helper function to get seconds from timestamp
@@ -113,38 +116,117 @@ export function AnnotationList({
     }
   }, [annotations, sortOption]);
 
+  const toggleSelection = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === annotations.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(annotations.map(a => a.id)));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size > 0 && confirm(t('confirmBulkDelete', { count: selectedIds.size }))) {
+      onDelete(Array.from(selectedIds));
+      setSelectedIds(new Set());
+      setSelectionMode(false);
+    }
+  };
+
+  const handleCancelSelection = () => {
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  };
+
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       <div
         className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 dark:bg-gray-800
             border-b border-gray-200 dark:border-gray-700 flex-shrink-0"
       >
-        <div className="flex items-center justify-between">
-          <p
-            className="text-sm sm:text-base font-medium text-gray-900
-                dark:text-gray-100"
-          >
-            {t('annotations')}{" "}
-            <span className="text-gray-500 dark:text-gray-400 font-normal">
-              ({annotations.length})
-            </span>
-          </p>
-          <div className="relative">
-            <select
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value as SortOption)}
-              className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600
-                bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200
-                hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer
-                focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="created-desc">{t('sortNewest')}</option>
-              <option value="created-asc">{t('sortOldest')}</option>
-              <option value="text-asc">{t('sortTextAsc')}</option>
-              <option value="text-desc">{t('sortTextDesc')}</option>
-            </select>
+        {selectionMode ? (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleSelectAll}
+                className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                title={selectedIds.size === annotations.length ? t('deselectAll') : t('selectAll')}
+              >
+                {selectedIds.size === annotations.length ? (
+                  <CheckSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                ) : (
+                  <Square className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                )}
+              </button>
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                {t('selectedCount', { count: selectedIds.size })}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleBulkDelete}
+                disabled={selectedIds.size === 0}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-red-600 text-white rounded
+                  hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                {t('delete')}
+              </button>
+              <button
+                onClick={handleCancelSelection}
+                className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300
+                  hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+              >
+                {t('cancel')}
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <p
+              className="text-sm sm:text-base font-medium text-gray-900
+                  dark:text-gray-100"
+            >
+              {t('annotations')}{" "}
+              <span className="text-gray-500 dark:text-gray-400 font-normal">
+                ({annotations.length})
+              </span>
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelectionMode(true)}
+                className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600
+                  bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200
+                  hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                title={t('selectMode')}
+              >
+                <CheckSquare className="w-4 h-4" />
+              </button>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as SortOption)}
+                className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-600
+                  bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200
+                  hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer
+                  focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="created-desc">{t('sortNewest')}</option>
+                <option value="created-asc">{t('sortOldest')}</option>
+                <option value="text-asc">{t('sortTextAsc')}</option>
+                <option value="text-desc">{t('sortTextDesc')}</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0">
@@ -152,6 +234,8 @@ export function AnnotationList({
           const text = getAnnotationText(annotation);
           const createdAgo = getTimeAgo(annotation.created, locale);
           const modifiedAgo = getTimeAgo(annotation.modified, locale);
+          const isSelected = selectedIds.has(annotation.id);
+
           return (
             <div
               key={annotation.id}
@@ -164,13 +248,27 @@ export function AnnotationList({
                 ${
                   selectedId === annotation.id
                     ? "bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100dark:hover:bg-blue-900/40"
+                    : isSelected
+                    ? "bg-blue-100 dark:bg-blue-900/20"
                     : "hover:bg-gray-50 dark:hover:bg-gray-800"
                 }
               `}
             >
+              {selectionMode && (
+                <button
+                  onClick={() => toggleSelection(annotation.id)}
+                  className="p-1 flex-shrink-0"
+                >
+                  {isSelected ? (
+                    <CheckSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  ) : (
+                    <Square className="w-5 h-5 text-gray-400 dark:text-gray-600" />
+                  )}
+                </button>
+              )}
               <div
-                onClick={() => onSelect(annotation.id)}
-                className="flex-1 cursor-pointer min-w-0"
+                onClick={() => !selectionMode && onSelect(annotation.id)}
+                className={`flex-1 min-w-0 ${!selectionMode ? 'cursor-pointer' : ''}`}
               >
                 {text ? (
                   <div
@@ -198,18 +296,20 @@ export function AnnotationList({
                   </div>
                 )}
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onFocus(annotation.id);
-                }}
-                className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700
-                  text-gray-600 dark:text-gray-400 hover:text-blue-600
-                  dark:hover:text-blue-400 transition-colors flex-shrink-0"
-                title={t('focusAnnotation')}
-              >
-                <Crosshair className="w-4 h-4" />
-              </button>
+              {!selectionMode && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFocus(annotation.id);
+                  }}
+                  className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700
+                    text-gray-600 dark:text-gray-400 hover:text-blue-600
+                    dark:hover:text-blue-400 transition-colors flex-shrink-0"
+                  title={t('focusAnnotation')}
+                >
+                  <Crosshair className="w-4 h-4" />
+                </button>
+              )}
             </div>
           );
         })}

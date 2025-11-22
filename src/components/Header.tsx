@@ -10,7 +10,7 @@ import { Link, useRouter } from '@/i18n/routing';
 import ManifestLink from "./ManifestLink";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useTranslations } from 'next-intl';
-import { List, HelpCircle, Menu, X } from "lucide-react";
+import { List, HelpCircle, Menu, X, BookMarked } from "lucide-react";
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
@@ -58,7 +58,7 @@ export default function Header() {
               <button
                 onClick={handleBackToCollection}
                 className="flex items-center gap-2 px-3 py-1.5 text-sm
-                  text-blue-600 dark:text-blue-400 hover:text-blue-800 
+                  text-blue-600 dark:text-blue-400 hover:text-blue-800
                   dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20
                   rounded-md transition-colors"
                 title={t('ItemPage.backToCollection')}
@@ -68,9 +68,19 @@ export default function Header() {
               </button>
             )}
             <ManifestLink />
+            {user && (
+              <Link
+                href="/my-annotations"
+                className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900
+                  dark:hover:text-gray-100 transition-colors"
+                title={t('MyAnnotations.title')}
+              >
+                <BookMarked className="h-5 w-5" />
+              </Link>
+            )}
             <Link
               href="/help"
-              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900
                 dark:hover:text-gray-100 transition-colors"
               title={t('Common.help')}
             >
@@ -119,12 +129,25 @@ export default function Header() {
             <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
               <ManifestLink />
             </div>
-            
+
+            {user && (
+              <Link
+                href="/my-annotations"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-gray-600
+                  dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700
+                  rounded-md transition-colors"
+              >
+                <BookMarked className="h-5 w-5" />
+                {t('MyAnnotations.title')}
+              </Link>
+            )}
+
             <Link
               href="/help"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 text-gray-600 
-                dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 
+              className="flex items-center gap-2 px-3 py-2 text-gray-600
+                dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700
                 rounded-md transition-colors"
             >
               <HelpCircle className="h-5 w-5" />

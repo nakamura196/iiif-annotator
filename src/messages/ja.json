@@ -105,7 +105,14 @@
     "sortTextDesc": "名前順（降順）",
     "locale": "ja",
     "created": "作成",
-    "modified": "更新"
+    "modified": "更新",
+    "selectMode": "選択モード",
+    "selectAll": "全て選択",
+    "deselectAll": "全て解除",
+    "selectedCount": "{count}件選択中",
+    "delete": "削除",
+    "cancel": "キャンセル",
+    "confirmBulkDelete": "{count}件のアノテーションを削除しますか？この操作は取り消せません。"
   },
   "HelpPage": {
     "title": "使い方ガイド",
@@ -131,5 +138,17 @@
     "clickToProcess": "クリックして画像から文字を抽出",
     "credit": "開発者：橋本雄太（国立歴史民俗博物館, @yuta1984）",
     "githubLink": "GitHubリポジトリ"
+  },
+  "MyAnnotations": {
+    "title": "マイアノテーション",
+    "description": "{count}件のアノテーションがあります",
+    "loading": "アノテーションを読み込み中...",
+    "loginRequired": "アノテーションを表示するにはログインしてください",
+    "loadError": "アノテーションの読み込みに失敗しました",
+    "searchPlaceholder": "アノテーションを検索...",
+    "searchResults": "{count}件の結果が見つかりました",
+    "noAnnotations": "まだアノテーションを作成していません",
+    "noSearchResults": "検索条件に一致するアノテーションがありません",
+    "noText": "テキストなし"
   }
 }

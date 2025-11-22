@@ -105,7 +105,14 @@
     "sortTextDesc": "Text (Z-A)",
     "locale": "en",
     "created": "Created",
-    "modified": "Modified"
+    "modified": "Modified",
+    "selectMode": "Select mode",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "selectedCount": "{count} selected",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "confirmBulkDelete": "Delete {count} annotations? This action cannot be undone."
   },
   "HelpPage": {
     "title": "User Guide",
@@ -131,5 +138,17 @@
     "clickToProcess": "Click to extract text from the current image",
     "credit": "Developer: Yuta Hashimoto (National Museum of Japanese History, @yuta1984)",
     "githubLink": "GitHub Repository"
+  },
+  "MyAnnotations": {
+    "title": "My Annotations",
+    "description": "You have {count} annotation(s)",
+    "loading": "Loading annotations...",
+    "loginRequired": "Please login to view your annotations",
+    "loadError": "Failed to load annotations",
+    "searchPlaceholder": "Search annotations...",
+    "searchResults": "Found {count} result(s)",
+    "noAnnotations": "You haven't created any annotations yet",
+    "noSearchResults": "No annotations match your search",
+    "noText": "No text content"
   }
 }

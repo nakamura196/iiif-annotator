@@ -266,6 +266,11 @@ function App() {
           await adapter.delete(id);
         }
       }
+
+      // Update results after deletion
+      setResults((prevResults) =>
+        prevResults.filter((r) => !ids.includes(r.id))
+      );
     } catch {
       // Failed to delete annotation
     }
