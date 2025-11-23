@@ -293,25 +293,44 @@ function App() {
   const handleFocus = useCallback((annotationId: string) => {
     if (!anno) return;
 
-    const annotation = anno.getAnnotations().find((a) => a.id === annotationId);
+    // First try to get from anno, then fallback to results
+    let annotation = anno.getAnnotations().find((a) => a.id === annotationId);
+    if (!annotation) {
+      // If not found in anno, get from results
+      annotation = results.find((r) => r.id === annotationId);
+    }
+
     if (!annotation) {
       return;
     }
 
-    const selector = (annotation.target as { selector?: { value?: string } })?.selector;
-    if (!selector?.value) {
+    // Handle both selector formats: single object or array
+    const target = annotation.target as { selector?: { value?: string } | Array<{ value?: string; type?: string }> };
+    let selectorValue: string | undefined;
+
+    if (Array.isArray(target.selector)) {
+      // Find the FragmentSelector or SvgSelector in the array
+      const fragmentSelector = target.selector.find(
+        (s) => s.type === 'FragmentSelector' || s.type === 'SvgSelector'
+      );
+      selectorValue = fragmentSelector?.value;
+    } else if (target.selector) {
+      selectorValue = target.selector.value;
+    }
+
+    if (!selectorValue) {
       return;
     }
 
     let x: number, y: number, w: number, h: number;
 
-    // Parse xywh format: "xywh=pixel:x,y,w,h"
-    const xywhMatch = selector.value.match(/xywh=pixel:(\d+),(\d+),(\d+),(\d+)/);
+    // Parse xywh format: "xywh=pixel:x,y,w,h" or "xywh=x,y,w,h"
+    const xywhMatch = selectorValue.match(/xywh=(?:pixel:)?([\d.]+),([\d.]+),([\d.]+),([\d.]+)/);
     if (xywhMatch) {
       [, x, y, w, h] = xywhMatch.map(Number);
     } else {
       // Parse SVG polygon format: <svg><polygon points="x1,y1 x2,y2 ..."/></svg>
-      const polygonMatch = selector.value.match(/points="([^"]+)"/);
+      const polygonMatch = selectorValue.match(/points="([^"]+)"/);
       if (!polygonMatch) {
         return;
       }
@@ -365,7 +384,7 @@ function App() {
     }).catch((error) => {
       console.error('Failed to load OpenSeadragon:', error);
     });
-  }, [anno]);
+  }, [anno, results]);
 
   const handleChange = async (text: string) => {
     const updatedAnnotation = anno
