@@ -562,9 +562,6 @@ function App() {
             {/* Title and page info with navigation */}
             <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 flex-1">
               <div className="min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">
-                  {t('annotations')}
-                </h2>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1">
                   {t('page', { current: currentPage + 1, total: infoUrls.length })}
                 </p>
@@ -702,7 +699,7 @@ function App() {
             const body = annotation?.body as { width?: number; height?: number };
             return body?.height || 4583;
           })()}
-          onTextExtracted={async (text, detections) => {
+          onTextExtracted={async (_text, detections) => {
             // Check if user is logged in first
             if (!user) {
               alert("ログインが必要です");
