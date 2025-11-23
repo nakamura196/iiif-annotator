@@ -294,10 +294,14 @@ function App() {
     if (!anno) return;
 
     // First try to get from anno, then fallback to results
-    let annotation = anno.getAnnotations().find((a) => a.id === annotationId);
+    let annotation: ImageAnnotation | undefined = anno.getAnnotations().find((a) => a.id === annotationId);
     if (!annotation) {
       // If not found in anno, get from results
-      annotation = results.find((r) => r.id === annotationId);
+      const resultAnnotation = results.find((r) => r.id === annotationId);
+      if (resultAnnotation) {
+        // Convert Annotation to ImageAnnotation format
+        annotation = resultAnnotation as unknown as ImageAnnotation;
+      }
     }
 
     if (!annotation) {
