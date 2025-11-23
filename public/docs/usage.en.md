@@ -92,9 +92,26 @@ Main features of the editor screen:
 
 #### Managing Annotations
 - **List View**: Check annotation list in side panel
+- **Sorting**: Sort by creation date or name from dropdown menu
 - **Edit**: Click annotation to edit content
 - **Delete**: Select and delete annotations
+- **Multi-select**: Click selection mode button to select multiple annotations for bulk deletion
+- **Focus**: Click target icon to focus on annotation in viewer
 - **Export**: Download created annotations
+
+#### Keyboard Shortcuts
+The following keyboard shortcuts are available for efficient annotation creation and editing:
+
+**Tool Switching:**
+- **M**: Selection mode (Move) - Select and move annotations
+- **B**: Rectangle mode (Box) - Create annotations with rectangular area
+- **P**: Polygon mode - Create annotations with polygonal area
+
+**Editing Operations:**
+- **T**: Focus text editor (when tool is selected or annotation is selected)
+- **Ctrl+S / Cmd+S**: Save annotation (when annotation is selected)
+
+*Note: Keyboard shortcuts only work when focus is not on an input field or textarea.
 
 ### Other Features
 
