@@ -603,35 +603,6 @@ function App() {
                 </button>
               </div>
             </div>
-            {/* Action buttons */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setIsOCROpen(true)}
-                className="flex items-center gap-1 px-2 sm:px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/20 
-                  text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 
-                  transition-colors"
-                title="OCR Text Recognition"
-              >
-                <ScanText className="h-4 w-4" />
-                <span className="hidden lg:inline">OCR</span>
-              </button>
-              <button
-                onClick={() => setIsManifestViewerOpen(true)}
-                className="p-1.5 sm:p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 
-                  dark:hover:text-gray-100 transition-colors"
-                title="View IIIF Manifest"
-              >
-                <Image
-                  src="/IIIF-logo-colored-text.svg"
-                  alt="IIIF"
-                  width={20}
-                  height={20}
-                  style={{ height: "auto" }}
-                  className="opacity-60 hover:opacity-100 transition-opacity"
-                />
-              </button>
-              <Export adapter={adapter} />
-            </div>
           </div>
         </div>
         <AnnotationList
@@ -652,8 +623,8 @@ function App() {
 
       {/* 右サイドバー（ツールバーとフォーム） */}
       <div
-        className="w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l 
-        border-gray-200 dark:border-gray-700 overflow-y-auto"
+        className="w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l
+        border-gray-200 dark:border-gray-700 overflow-y-auto flex flex-col"
       >
         <ToolBar tool={tool} setTool={setTool} />
         <AnnotationForm
@@ -667,6 +638,37 @@ function App() {
           onChange={handleChange}
           onDelete={handleDelete}
         />
+        {/* Action buttons */}
+        <div className="mt-auto p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setIsOCROpen(true)}
+              className="flex items-center gap-1 px-2 sm:px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/20
+                text-blue-600 dark:text-blue-400 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30
+                transition-colors"
+              title="OCR Text Recognition"
+            >
+              <ScanText className="h-4 w-4" />
+              <span className="hidden lg:inline">OCR</span>
+            </button>
+            <button
+              onClick={() => setIsManifestViewerOpen(true)}
+              className="p-1.5 sm:p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900
+                dark:hover:text-gray-100 transition-colors"
+              title="View IIIF Manifest"
+            >
+              <Image
+                src="/IIIF-logo-colored-text.svg"
+                alt="IIIF"
+                width={20}
+                height={20}
+                style={{ height: "auto" }}
+                className="opacity-60 hover:opacity-100 transition-opacity"
+              />
+            </button>
+            <Export adapter={adapter} />
+          </div>
+        </div>
       </div>
       
       {/* Manifest Viewer Modal */}
