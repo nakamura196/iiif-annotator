@@ -56,15 +56,17 @@ export function AnnotationForm({
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <button
             type="submit"
-            className="flex-1 bg-blue-600 dark:bg-blue-500 text-white 
+            className="flex-1 bg-blue-600 dark:bg-blue-500 text-white
               px-3 sm:px-4 py-2 rounded-md text-sm sm:text-base
-              cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-600 
-              focus:outline-none focus:ring-2 focus:ring-blue-500 
-              dark:focus:ring-blue-400 focus:ring-offset-2 
+              cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-600
+              focus:outline-none focus:ring-2 focus:ring-blue-500
+              dark:focus:ring-blue-400 focus:ring-offset-2
               dark:focus:ring-offset-gray-900
-              transition-colors duration-200 font-medium"
+              transition-colors duration-200 font-medium
+              flex items-center justify-center"
           >
             {t('saveChanges')}
+            <kbd className="ml-2 px-1.5 py-0.5 text-xs font-mono bg-blue-500 dark:bg-blue-400 rounded">⌘S</kbd>
           </button>
           {id && (
             <button

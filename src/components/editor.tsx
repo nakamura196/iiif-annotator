@@ -453,10 +453,11 @@ function App() {
         return;
       }
 
-      // Ignore if user is typing in an input/textarea
+      // Ignore if user is typing in an input/textarea/contenteditable
       if (
         e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target instanceof HTMLElement && e.target.isContentEditable)
       ) {
         return;
       }

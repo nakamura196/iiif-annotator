@@ -12,10 +12,11 @@ export function ToolBar({ tool, setTool }: ToolBarProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in an input/textarea
+      // Ignore if user is typing in an input/textarea/contenteditable
       if (
         e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target instanceof HTMLElement && e.target.isContentEditable)
       ) {
         return;
       }
@@ -78,6 +79,7 @@ export function ToolBar({ tool, setTool }: ToolBarProps) {
           onClick={() => setTool(undefined)}
         >
           <Move className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> {t('move')}
+          <kbd className="ml-1 sm:ml-2 px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-xs font-mono bg-gray-200 dark:bg-gray-600 rounded">M</kbd>
         </button>
         <button
           className={`
@@ -100,6 +102,7 @@ export function ToolBar({ tool, setTool }: ToolBarProps) {
           onClick={() => setTool("rectangle")}
         >
           <Square className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> {t('rectangle')}
+          <kbd className="ml-1 sm:ml-2 px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-xs font-mono bg-gray-200 dark:bg-gray-600 rounded">B</kbd>
         </button>
         <button
           className={`
@@ -123,6 +126,7 @@ export function ToolBar({ tool, setTool }: ToolBarProps) {
         >
           <TriangleRight className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
           {t('polygon')}
+          <kbd className="ml-1 sm:ml-2 px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-xs font-mono bg-gray-200 dark:bg-gray-600 rounded">P</kbd>
         </button>
       </div>
     </div>
