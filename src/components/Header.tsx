@@ -78,14 +78,16 @@ export default function Header() {
                 <BookMarked className="h-5 w-5" />
               </Link>
             )}
-            <Link
+            <a
               href="/help"
+              target="_blank"
+              rel="noopener noreferrer"
               className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900
                 dark:hover:text-gray-100 transition-colors"
               title={t('Common.help')}
             >
               <HelpCircle className="h-5 w-5" />
-            </Link>
+            </a>
             <LanguageSwitcher />
             <ThemeToggle />
             <LoginButton user={user} loading={loading} />
@@ -143,8 +145,10 @@ export default function Header() {
               </Link>
             )}
 
-            <Link
+            <a
               href="/help"
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-2 px-3 py-2 text-gray-600
                 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700
@@ -152,7 +156,7 @@ export default function Header() {
             >
               <HelpCircle className="h-5 w-5" />
               {t('Common.help')}
-            </Link>
+            </a>
             
             <div className="flex items-center justify-between px-3 py-2 
               border-t border-gray-200 dark:border-gray-700">
