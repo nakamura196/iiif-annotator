@@ -1,5 +1,9 @@
 # IIIF Annotator
 
+[![Live](https://img.shields.io/badge/demo-iiif--annotator.vercel.app-0B8BEE)](https://iiif-annotator.vercel.app/)
+[![CI](https://github.com/nakamura196/iiif-annotator/actions/workflows/ci.yml/badge.svg)](https://github.com/nakamura196/iiif-annotator/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 A web-based annotation editor for [IIIF](https://iiif.io/) (International Image
 Interoperability Framework) images, with real-time sync via Firebase and
 client-side OCR for Japanese historical documents.
