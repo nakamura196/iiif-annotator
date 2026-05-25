@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "IIIF Annotator"
+abstract: "A web-based annotation editor for IIIF images with Firebase real-time sync and client-side Japanese OCR."
+type: software
+authors:
+  - family-names: Nakamura
+    given-names: Satoru
+    # orcid: "https://orcid.org/0000-0000-0000-0000"  # add your ORCID if desired
+version: "0.1.0"
+date-released: "2026-05-26"
+license: MIT
+repository-code: "https://github.com/nakamura196/iiif-annotator"
+url: "https://iiif-annotator.vercel.app"
+keywords:
+  - IIIF
+  - annotation
+  - digital-humanities
+  - OCR
+  - Next.js

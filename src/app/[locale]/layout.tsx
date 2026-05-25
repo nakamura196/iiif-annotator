@@ -30,7 +30,7 @@ const notoSerif = Noto_Serif_JP({
 
 const title = "IIIF Annotator";
 const description = "Annotate IIIF images with Annotorious v3";
-const url = "https://next-fb-anno.vercel.app";
+const url = "https://iiif-annotator.vercel.app";
 const imageUrl = `${url}/ogp.webp`;
 const twitter = "@nsatoru196";
 
