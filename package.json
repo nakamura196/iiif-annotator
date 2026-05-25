@@ -1,0 +1,59 @@
+{
+  "name": "iiif-annotator",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack --port 3111",
+    "prebuild": "mkdir -p public/models public/config && cp -r node_modules/@nakamura196/ndl-koten-ocr-web/models/* public/models/ && cp node_modules/@nakamura196/ndl-koten-ocr-web/models/NDLmoji.yaml public/config/",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@annotorious/annotorious": "3.7.4",
+    "@annotorious/openseadragon": "3.7.4",
+    "@annotorious/react": "3.7.4",
+    "@ckeditor/ckeditor5-react": "^9.5.0",
+    "@iiif/parser": "^2.2.1",
+    "@iiif/presentation-3": "^2.2.3",
+    "@nakamura196/ndl-koten-ocr-web": "^1.0.0",
+    "@nakamura196/react-ui": "github:nakamura196/react-ui#v0.2.1",
+    "@next/third-parties": "^16.1.6",
+    "@opentelemetry/api": "^1.9.0",
+    "@swc/helpers": "^0.5.18",
+    "ckeditor5": "^45.2.2",
+    "ckeditor5-premium-features": "^45.2.2",
+    "firebase": "^11.10.0",
+    "firebase-admin": "^13.6.0",
+    "js-yaml": "^4.1.0",
+    "lucide-react": "^0.513.0",
+    "next": "^16.1.6",
+    "next-intl": "^4.8.2",
+    "next-themes": "^0.4.6",
+    "onnxruntime-web": "^1.22.0",
+    "openseadragon": "^5.0.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "xml-formatter": "^3.6.6"
+  },
+  "overrides": {
+    "@ckeditor/ckeditor5-ai": {
+      "@aws-sdk/client-bedrock-runtime": "^3.894.0"
+    }
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@playwright/test": "^1.58.2",
+    "@tailwindcss/postcss": "^4.1.12",
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/node": "^22.18.0",
+    "@types/openseadragon": "^4.1.0",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "eslint": "^9.34.0",
+    "eslint-config-next": "^16.1.6",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@import "@nakamura196/react-ui/styles.css";
+
+/* DS Prose / MarkdownContent rely on prose-* utilities (Tailwind v4 registers via @plugin). */
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* DS components live in node_modules; let Tailwind v4 scan their classes. */
+@source "../../node_modules/@nakamura196/react-ui/src";
+
+:root {
+  --ds-font-sans: var(--font-noto-sans), "Noto Sans JP", ui-sans-serif,
+    system-ui, sans-serif;
+  --ds-font-serif: var(--font-noto-serif), "Noto Serif JP", ui-serif, Georgia,
+    serif;
+}
+
+body {
+  font-family: var(--ds-font-sans);
+}

@@ -1,0 +1,71 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+/test-results/
+test-*.spec.ts
+test-*.mjs
+test-*.png
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+
+# Firebase service account keys
+*-firebase-adminsdk-*.json
+
+next-env.d.ts
+nextjs-i18n-themes-ssr-template/
+
+# OCR models and config files
+/public/models/
+/public/config/
+
+# ONNX Runtime files (loaded from CDN)
+/public/ort*.mjs
+/public/ort*.wasm
+
+# IIIF output
+/iiif-output/
+
+# Backups & admin tooling now live in the private iiif-annotator-admin repo
+/backups/
+/scripts/data/
+
+# editor (workspace settings can contain tokens)
+.vscode/settings.json
+
+.env*.local
