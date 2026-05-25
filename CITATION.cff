@@ -6,7 +6,7 @@ type: software
 authors:
   - family-names: Nakamura
     given-names: Satoru
-    # orcid: "https://orcid.org/0000-0000-0000-0000"  # add your ORCID if desired
+    orcid: "https://orcid.org/0000-0001-8245-7925"
 version: "0.1.0"
 date-released: "2026-05-26"
 license: MIT
