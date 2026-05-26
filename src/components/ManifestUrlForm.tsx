@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from '@/i18n/routing';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { AlertTriangle } from 'lucide-react';
-import { SectionHeading, buttonClass } from '@nakamura196/react-ui';
+import { SectionHeading, VideoEmbed, buttonClass } from '@nakamura196/react-ui';
 import { LatestUpdates } from './LatestUpdates';
 
 export function ManifestUrlForm() {
@@ -13,6 +13,8 @@ export function ManifestUrlForm() {
   const [pos, setPos] = useState("");
   const router = useRouter();
   const t = useTranslations();
+  const locale = useLocale();
+  const demoVideoId = locale === 'en' ? 'PdRgW_JgKsY' : 'qfIFvhhAEDQ';
 
   const handleManifestSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +46,14 @@ export function ManifestUrlForm() {
         <SectionHeading as="h2" accent={false} className="justify-center">
           {t('Common.title')}
         </SectionHeading>
+
+        <VideoEmbed
+          videoId={demoVideoId}
+          title={t('Common.title')}
+          captions
+          ccLangPref={locale}
+          hl={locale}
+        />
 
         {/* Firebase Free Tier Warning */}
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
