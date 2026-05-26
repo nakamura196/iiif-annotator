@@ -29,6 +29,12 @@ export default function Footer() {
               external: true,
             },
             { label: "IIIF", href: "https://iiif.io/", external: true },
+            {
+              // nakamura196 が公開している他のツール一覧 (academicpages portfolio)
+              label: t("Footer.otherTools"),
+              href: "https://nakamura196.github.io/portfolio/",
+              external: true,
+            },
           ],
         },
       ]}
