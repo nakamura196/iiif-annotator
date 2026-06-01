@@ -59,6 +59,13 @@ cp .env.example .env.local
 npm run dev      # http://localhost:3111
 ```
 
+If you keep `FIREBASE_SERVICE_ACCOUNT_BASE64` in 1Password (recommended — set it
+to an `op://…` reference in `.env.local`), inject it at runtime instead:
+
+```bash
+npm run dev:op   # op run --env-file=.env.local -- npm run dev
+```
+
 ### Usage
 
 - **Home** (`/`) — paste a IIIF **manifest** or **collection** URL to begin.
@@ -147,6 +154,13 @@ cp .env.example .env.local
 
 ```bash
 npm run dev      # http://localhost:3111
+```
+
+`FIREBASE_SERVICE_ACCOUNT_BASE64` を 1Password で管理する場合（推奨。`.env.local`
+には `op://…` 参照を書く）、実行時に注入します:
+
+```bash
+npm run dev:op   # op run --env-file=.env.local -- npm run dev
 ```
 
 ### 使い方
