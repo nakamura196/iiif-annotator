@@ -1,5 +1,17 @@
 name: Dependabot auto-merge
-on: pull_request_target
+
+# CI ワークフロー (ci.yml) の成功完了を workflow_run で受けてから
+# Dependabot の minor/patch PR をマージする。
+# branch protection / required check を設けない方針なので、pull_request 上で
+# `gh pr merge --auto` してしまうと CI green を待たずに即マージされる。
+# それを避けるため「CI が success で完了したこと」をトリガにして CI 通過を担保する。
+#
+# major 更新と未知の更新タイプは手動マージのまま。
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
 
 permissions:
   contents: write
@@ -7,23 +19,58 @@ permissions:
 
 jobs:
   auto-merge:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
     steps:
-      - name: Fetch Dependabot metadata
-        id: meta
-        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a # v2.5.0
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Approve PR
-        if: steps.meta.outputs.update-type != 'version-update:semver-major'
-        run: gh pr review --approve "$PR_URL"
+      - name: Find PR for this CI run
+        id: pr
         env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Enable auto-merge
-        if: steps.meta.outputs.update-type != 'version-update:semver-major'
-        run: gh pr merge --auto --squash "$PR_URL" || gh pr merge --squash "$PR_URL"
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          PR=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA/pulls" --jq '.[0]')
+          if [ -z "$PR" ] || [ "$PR" = "null" ]; then
+            echo "no PR found for $HEAD_SHA"
+            exit 0
+          fi
+          echo "number=$(echo "$PR" | jq -r .number)" >> "$GITHUB_OUTPUT"
+          echo "title=$(echo "$PR" | jq -r .title)" >> "$GITHUB_OUTPUT"
+
+      - name: Classify update type from PR title
+        id: classify
+        if: steps.pr.outputs.number != ''
         env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
+          TITLE: ${{ steps.pr.outputs.title }}
+        run: |
+          # Grouped PR (minor & patch group from dependabot.yml)
+          if echo "$TITLE" | grep -qE 'minor-and-patch'; then
+            echo "merge=true" >> "$GITHUB_OUTPUT"
+            echo "reason=grouped minor-and-patch" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Individual PR: title like "bump <pkg> from <from> to <to>"
+          FROM=$(echo "$TITLE" | sed -nE 's/.*from ([0-9]+)\.([0-9]+)\.([0-9]+).*/\1/p')
+          TO=$(echo "$TITLE" | sed -nE 's/.*to ([0-9]+)\.([0-9]+)\.([0-9]+).*/\1/p')
+          if [ -n "$FROM" ] && [ -n "$TO" ] && [ "$FROM" = "$TO" ]; then
+            echo "merge=true" >> "$GITHUB_OUTPUT"
+            echo "reason=same major ($FROM)" >> "$GITHUB_OUTPUT"
+          else
+            echo "merge=false" >> "$GITHUB_OUTPUT"
+            echo "reason=major bump or unparseable ($FROM -> $TO)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Merge
+        if: steps.classify.outputs.merge == 'true'
+        env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Merging PR #${{ steps.pr.outputs.number }} (${{ steps.classify.outputs.reason }})"
+          gh pr merge --squash --delete-branch --repo ${{ github.repository }} ${{ steps.pr.outputs.number }}
+
+      - name: Skip (manual review needed)
+        if: steps.classify.outputs.merge == 'false'
+        run: |
+          echo "::notice::PR #${{ steps.pr.outputs.number }} not auto-merged: ${{ steps.classify.outputs.reason }}"

@@ -1,0 +1,34 @@
+name: audit
+
+# 週次の依存監査。Dependabot alert (Security タブ / メール) の保険であり、
+# とくに Dependabot が PR を出せない transitive (孫依存) の脆弱性を CI 上に可視化する。
+# high 以上で fail、moderate は informational (Job Summary に出すが赤くしない)。
+
+on:
+  schedule:
+    # JST 月 07:00 = UTC 日 22:00
+    - cron: '0 22 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Audit (fail on high+)
+        run: npm audit --audit-level=high
+
+      - name: Audit report (moderate+, informational)
+        if: always()
+        run: npm audit --audit-level=moderate >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
