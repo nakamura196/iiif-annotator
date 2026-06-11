@@ -1,6 +1,7 @@
 import {
   AnnotationWidthSingleBody,
   AnnotationWithMultipleBodies,
+  MetadataField,
 } from "@/types/annotation";
 import { ImageAnnotation } from "@annotorious/annotorious";
 
@@ -151,7 +152,8 @@ export function convertMultipleAnnotations(
 export function convertAnnotoriousToIIIF(
   annotation: ImageAnnotation,
   infoUrl: string,
-  manifestUrl: string
+  manifestUrl: string,
+  metadata?: MetadataField[]
 ) {
   const iiifAnnotation: AnnotationWidthSingleBody = {
     id: annotation.id,
@@ -165,6 +167,17 @@ export function convertAnnotoriousToIIIF(
     },
     target: convertTarget(annotation.target, infoUrl, manifestUrl),
   };
+
+  // label/value が両方そろった行のみ採用（空行を保存しない）
+  const cleaned = (metadata || []).filter(
+    (m) => m.label?.trim() && m.value?.trim()
+  );
+  if (cleaned.length > 0) {
+    iiifAnnotation.metadata = cleaned.map((m) => ({
+      label: m.label.trim(),
+      value: m.value.trim(),
+    }));
+  }
 
   return iiifAnnotation;
 }

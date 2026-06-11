@@ -18,6 +18,7 @@ export default function Footer() {
           links: [
             { label: t("Common.help"), href: "/help" },
             { label: t("Changelog.title"), href: "/changelog" },
+            { label: t("Mascot.name"), href: "/mascot" },
           ],
         },
         {

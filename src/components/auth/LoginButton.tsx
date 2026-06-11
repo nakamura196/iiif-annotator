@@ -10,7 +10,7 @@ import {
   type User,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { LogOut, Key } from "lucide-react";
+import { LogOut, Key, BookMarked, Tags } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import { Link } from "@/i18n/routing";
 import { buttonClass } from "@nakamura196/react-ui";
@@ -142,6 +142,28 @@ export function LoginButton({ user, loading }: LoginButtonProps) {
                   </p>
                 )}
               </div>
+
+              <Link
+                href="/my-annotations"
+                onClick={() => setShowDropdown(false)}
+                className="w-full text-left px-4 py-2 text-sm text-[var(--ds-fg)]
+                  hover:bg-[var(--ds-surface-2)]
+                  flex items-center gap-2"
+              >
+                <BookMarked className="w-4 h-4" />
+                {t('myAnnotations')}
+              </Link>
+
+              <Link
+                href="/vocabulary"
+                onClick={() => setShowDropdown(false)}
+                className="w-full text-left px-4 py-2 text-sm text-[var(--ds-fg)]
+                  hover:bg-[var(--ds-surface-2)]
+                  flex items-center gap-2"
+              >
+                <Tags className="w-4 h-4" />
+                {t('vocabulary')}
+              </Link>
 
               <Link
                 href="/settings"

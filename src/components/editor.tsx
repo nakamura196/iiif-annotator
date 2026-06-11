@@ -25,7 +25,14 @@ import {
   Annotation,
   AnnotationWidthSingleBody,
   AnnotationWithMultipleBodies,
+  MetadataField,
 } from "@/types/annotation";
+import {
+  getVocabularies,
+  addPropertiesToVocabulary,
+  type Vocabulary,
+} from "@/lib/metadataVocabulary";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { convertPresentation2 } from "@iiif/parser/presentation-2";
 import { Canvas } from "@iiif/presentation-3";
@@ -66,10 +73,27 @@ function App() {
     string | null
   >(null);
 
+  // ユーザ単位のメタデータ語彙（複数の名前付きプロパティ集合）と、
+  // 編集中に手動選択している語彙 ID。
+  const [vocabularies, setVocabularies] = useState<Vocabulary[]>([]);
+  const [selectedVocabId, setSelectedVocabId] = useState<string>("");
+
   const [isManifestViewerOpen, setIsManifestViewerOpen] = useState(false);
   const [isOCROpen, setIsOCROpen] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState<string>("");
   const [sidebarTab, setSidebarTab] = useState<"annotations" | "thumbnails">("annotations");
+
+  // lg 以上でだけ 3 カラムをリサイズ可能にする（未満はモバイル縦積み）。
+  // App は dynamic(ssr:false) のためハイドレーション不整合は起きない。
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => setIsDesktop(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   const anno = useAnnotator<AnnotoriousOpenSeadragonAnnotator>();
 
@@ -83,6 +107,25 @@ function App() {
 
     return () => unsubscribe();
   }, []);
+
+  // ユーザのメタデータ語彙を読み込む
+  useEffect(() => {
+    if (!user) {
+      setVocabularies([]);
+      return;
+    }
+    getVocabularies(user.uid)
+      .then((v) => {
+        setVocabularies(v);
+        // 未選択なら先頭の語彙を既定で選ぶ
+        setSelectedVocabId((cur) => (cur && v.some((x) => x.id === cur) ? cur : v[0]?.id || ""));
+      })
+      .catch(() => setVocabularies([]));
+  }, [user]);
+
+  // 選択中の語彙のプロパティ（入力フォームの候補）
+  const activeProperties =
+    vocabularies.find((v) => v.id === selectedVocabId)?.properties || [];
 
   // マニフェストの取得とアダプターの初期化
   useEffect(() => {
@@ -401,7 +444,7 @@ function App() {
     });
   }, [anno, results]);
 
-  const handleChange = async (text: string) => {
+  const handleChange = async (text: string, metadata: MetadataField[] = []) => {
     const updatedAnnotation = anno
       ?.getAnnotations()
       .find((a) => a.id === selectedAnnotationId);
@@ -422,8 +465,22 @@ function App() {
     const iiifAnnotation = convertAnnotoriousToIIIF(
       updatedAnnotation as unknown as ImageAnnotation,
       canvasId,
-      manifestUrl
+      manifestUrl,
+      metadata
     );
+
+    // 新しく使われた項目名は、選択中の語彙に追記（候補として再利用できるように）。
+    // 語彙が未選択（1つも無い）場合は追記しない。
+    if (user && selectedVocabId) {
+      const newLabels = metadata
+        .map((m) => m.label?.trim())
+        .filter((l): l is string => !!l && !activeProperties.includes(l));
+      if (newLabels.length > 0) {
+        addPropertiesToVocabulary(user.uid, selectedVocabId, newLabels)
+          .then(setVocabularies)
+          .catch(() => {});
+      }
+    }
 
     if (ex) {
       const updated = await adapter?.update(iiifAnnotation);
@@ -562,17 +619,9 @@ function App() {
     );
   }
 
-  return (
-    <div
-      className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]
-      bg-[var(--ds-bg)]"
-    >
-      {/* サイドバー（アノテーションリスト / サムネイル一覧） */}
-      <div
-        className="w-full lg:w-1/4 h-[50vh] lg:h-full
-        border-b lg:border-b-0 lg:border-r border-[var(--ds-border)]
-        flex flex-col overflow-hidden"
-      >
+  // 3 カラムの中身（幅・境界は外側のレイアウトが持つ）。
+  const leftContent = (
+    <div className="h-full flex flex-col overflow-hidden">
         <div className="border-b border-[var(--ds-border)] flex-shrink-0">
           {/* Tab switcher + page navigation */}
           <div className="flex items-center justify-between px-2 pt-2">
@@ -663,10 +712,11 @@ function App() {
             }}
           />
         )}
-      </div>
+    </div>
+  );
 
-      {/* メインビューア */}
-      <div className="w-full lg:w-2/4 min-h-[50vh] lg:min-h-full flex flex-col">
+  const centerContent = (
+    <div className="h-full min-h-0 flex flex-col">
         <div className="flex-1 min-h-0 flex flex-col">
           <Viewer tool={tool} options={viewerOptions} />
         </div>
@@ -679,13 +729,11 @@ function App() {
             }
           }}
         />
-      </div>
+    </div>
+  );
 
-      {/* 右サイドバー（ツールバーとフォーム） */}
-      <div
-        className="w-full lg:w-1/4 border-t lg:border-t-0 lg:border-l
-        border-[var(--ds-border)] overflow-y-auto flex flex-col"
-      >
+  const rightContent = (
+    <div className="h-full overflow-y-auto flex flex-col">
         <ToolBar tool={tool} setTool={setTool} />
         <AnnotationForm
           id={selectedAnnotationId || ""}
@@ -695,6 +743,13 @@ function App() {
             )?.find((a) => a.id === selectedAnnotationId)?.body?.[0]?.value ||
             ""
           }
+          metadata={
+            results.find((r) => r.id === selectedAnnotationId)?.metadata || []
+          }
+          vocabulary={activeProperties}
+          vocabularies={vocabularies.map((v) => ({ id: v.id, name: v.name }))}
+          selectedVocabId={selectedVocabId}
+          onSelectVocab={setSelectedVocabId}
           onChange={handleChange}
           onDelete={handleDelete}
         />
@@ -728,8 +783,45 @@ function App() {
             <Export adapter={adapter} />
           </div>
         </div>
-      </div>
-      
+    </div>
+  );
+
+  return (
+    <>
+      {isDesktop ? (
+        // PanelGroup は inline で height:100% を当てるため、親に「定値の高さ」が必要。
+        // ヘッダーは h-16(4rem) + border-b(1px) = 65px 占めるので、その分を引く。
+        // （-1px を入れないと合計が 100vh を 1px 超え、縦スクロールバーが出る）
+        <div className="h-[calc(100vh-4rem-1px)] bg-[var(--ds-bg)]">
+        <PanelGroup direction="horizontal" autoSaveId="editor-columns">
+          <Panel defaultSize={25} minSize={15} className="border-r border-[var(--ds-border)]">
+            {leftContent}
+          </Panel>
+          <PanelResizeHandle
+            className="w-1 bg-[var(--ds-border)] hover:bg-[var(--ds-primary)]
+              data-[resize-handle-state=drag]:bg-[var(--ds-primary)] transition-colors cursor-col-resize"
+          />
+          <Panel defaultSize={50} minSize={25}>
+            {centerContent}
+          </Panel>
+          <PanelResizeHandle
+            className="w-1 bg-[var(--ds-border)] hover:bg-[var(--ds-primary)]
+              data-[resize-handle-state=drag]:bg-[var(--ds-primary)] transition-colors cursor-col-resize"
+          />
+          <Panel defaultSize={25} minSize={15} className="border-l border-[var(--ds-border)]">
+            {rightContent}
+          </Panel>
+        </PanelGroup>
+        </div>
+      ) : (
+        // モバイルは縦積み。固定高の各カラム＋フォームで、はみ出し分は自然にスクロール。
+        <div className="flex flex-col bg-[var(--ds-bg)]">
+          <div className="h-[50vh] border-b border-[var(--ds-border)]">{leftContent}</div>
+          <div className="h-[55vh] border-b border-[var(--ds-border)]">{centerContent}</div>
+          <div className="border-t border-[var(--ds-border)]">{rightContent}</div>
+        </div>
+      )}
+
       {/* Manifest Viewer Modal */}
       {manifestUrl && (
         <ManifestViewer
@@ -839,7 +931,7 @@ function App() {
           }}
         />
       )}
-    </div>
+    </>
   );
 }
 

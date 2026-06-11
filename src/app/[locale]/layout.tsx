@@ -5,6 +5,7 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import "../globals.css";
 import ThemeProvider from "@/app/theme-provider";
+import { Mascot } from "@/components/Mascot";
 import { routing } from '@/i18n/routing';
 import Script from 'next/script';
 import { GoogleAnalytics } from '@next/third-parties/google';
@@ -107,6 +108,7 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             {children}
+            <Mascot />
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>

@@ -13,6 +13,9 @@ interface AnnotationListProps {
 
 type SortOption = 'created-desc' | 'created-asc' | 'text-asc' | 'text-desc';
 
+const getMetadataFields = (annotation: AnnotationWithMultipleBodies) =>
+  (annotation.metadata || []).filter((m) => m?.label?.trim() || m?.value?.trim());
+
 const getAnnotationText = (annotation: AnnotationWithMultipleBodies) => {
   // Handle both array and object body formats
   if (Array.isArray(annotation.body)) {
@@ -229,6 +232,7 @@ export function AnnotationList({
       <div className="flex-1 overflow-y-auto min-h-0">
         {sortedAnnotations.map((annotation) => {
           const text = getAnnotationText(annotation);
+          const metadataFields = getMetadataFields(annotation);
           const createdAgo = getTimeAgo(annotation.created, locale);
           const modifiedAgo = getTimeAgo(annotation.modified, locale);
           const isSelected = selectedIds.has(annotation.id);
@@ -277,6 +281,27 @@ export function AnnotationList({
                 ) : (
                   <div className="text-sm sm:text-base text-[var(--ds-fg-muted)] italic">
                     {t('emptyText')}
+                  </div>
+                )}
+                {metadataFields.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {metadataFields.map((field, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5
+                          rounded text-[11px] leading-tight
+                          bg-[var(--ds-surface-2)] text-[var(--ds-fg-muted)]
+                          border border-[var(--ds-border)]"
+                        title={`${field.label}: ${field.value}`}
+                      >
+                        {field.label && (
+                          <span className="font-medium text-[var(--ds-fg)]">
+                            {field.label}
+                          </span>
+                        )}
+                        {field.value && <span className="truncate max-w-[140px]">{field.value}</span>}
+                      </span>
+                    ))}
                   </div>
                 )}
                 {(createdAgo || modifiedAgo) && (

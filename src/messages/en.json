@@ -5,6 +5,39 @@
     "loading": "Loading...",
     "help": "Help"
   },
+  "Mascot": {
+    "name": "Loupe-chan",
+    "learnMore": "Who's Loupe-chan? →",
+    "lines": [
+      "Welcome to IIIF Annotator! 🔍",
+      "Paste a manifest URL to start editing.",
+      "Draw a rectangle or polygon around what interests you.",
+      "Don't forget to save — and back up your data often!",
+      "The OCR button can read text from the image.",
+      "Click me and I'll say a little something."
+    ]
+  },
+  "MascotPage": {
+    "backToHome": "Back to Home",
+    "title": "About Loupe-chan",
+    "lead": "Loupe-chan is the guide mascot of IIIF Annotator.",
+    "nameHeading": "About the name",
+    "nameBody": "IIIF Annotator is a tool for zooming into images, looking closely, and annotating what catches your eye. We turned the very tool for \"looking closely\" — the magnifying glass (loupe) — into a character. Hence the name \"Loupe-chan.\" The metal rim, the glint on the glass, and the handle all mimic a real magnifying glass.",
+    "roleHeading": "What she does",
+    "roles": [
+      "She sits at the bottom-right of the screen and offers a one-line tip on each step.",
+      "Click her and her expression and line change; close the bubble with its \"×\".",
+      "On the annotation editor screen she steps aside so she won't get in your way."
+    ],
+    "moodsHeading": "Moods",
+    "moodsBody": "Click her and her expression cycles through.",
+    "moodDefault": "Default",
+    "moodHappy": "Happy",
+    "moodThinking": "Thinking",
+    "designHeading": "Design",
+    "designBody": "Loupe-chan is drawn entirely in SVG — no image files. Her colors follow the site's theme variables and adapt to dark mode automatically. Everything, including the bobbing and blinking, runs lightweight in your browser.",
+    "cta": "▶ Try it now"
+  },
   "HomePage": {
     "warning": {
       "title": "Important Notice",
@@ -82,11 +115,36 @@
     "enterText": "Enter text...",
     "thumbnails": "Thumbnails",
     "layoutSingle": "Single column",
-    "layoutGrid": "Grid view"
+    "layoutGrid": "Grid view",
+    "metadata": "Metadata",
+    "addMetadataField": "Add field",
+    "metadataLabelPlaceholder": "Field (e.g. Drawing type)",
+    "metadataValuePlaceholder": "Value",
+    "removeMetadataField": "Remove field",
+    "selectVocabulary": "Select vocabulary"
+  },
+  "MetadataVocab": {
+    "title": "Metadata fields (vocabulary)",
+    "description": "Manage the vocabularies attached to annotations. A vocabulary is a named set of properties (e.g. pj-a → Drawing type, Year); you can create several. When editing an annotation, pick a vocabulary and its properties appear as suggestions (values are free text). Vocabularies can be exported/imported as JSON and shared across people.",
+    "vocabularyNamePlaceholder": "Vocabulary name (e.g. pj-a)",
+    "addVocabulary": "Add vocabulary",
+    "removeVocabulary": "Remove this vocabulary",
+    "empty": "No vocabularies yet. Use \"Add vocabulary\" to create one.",
+    "fieldPlaceholder": "Field name (e.g. Drawing type, Year)",
+    "addField": "Add field",
+    "removeField": "Remove",
+    "save": "Save",
+    "saved": "Saved",
+    "export": "Export",
+    "import": "Import",
+    "importError": "Import failed (please check the JSON format).",
+    "importHint": "Share the exported JSON and load it via Import. Vocabularies with the same name have their properties merged."
   },
   "Auth": {
     "login": "Login",
     "logout": "Logout",
+    "myAnnotations": "My Annotations",
+    "vocabulary": "Vocabulary",
     "apiKeys": "API Keys",
     "createAccount": "Create Account",
     "signIn": "Sign In",

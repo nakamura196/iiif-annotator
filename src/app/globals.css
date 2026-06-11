@@ -19,3 +19,56 @@
 body {
   font-family: var(--ds-font-sans);
 }
+
+/* --- Mascot (ルーペちゃん) --- */
+/* ゆったり上下に揺れる本体。transform-box: fill-box で bbox 中心を基準にする。 */
+.mascot-bob {
+  transform-box: fill-box;
+  transform-origin: 50% 78%;
+  animation: mascot-bob 3.2s ease-in-out infinite;
+}
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2.5deg);
+  }
+  50% {
+    transform: translateY(-5%) rotate(2.5deg);
+  }
+}
+
+/* まばたき (default 表情の目だけ) */
+.mascot-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascot-blink 4.4s ease-in-out infinite;
+}
+@keyframes mascot-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.12);
+  }
+}
+
+/* 吹き出しの出現 */
+@keyframes mascot-pop {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-bob,
+  .mascot-eyes {
+    animation: none;
+  }
+}
