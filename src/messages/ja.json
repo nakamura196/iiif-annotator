@@ -5,6 +5,39 @@
     "loading": "読み込み中...",
     "help": "ヘルプ"
   },
+  "Mascot": {
+    "name": "ルーペちゃん",
+    "learnMore": "ルーペちゃんって？ →",
+    "lines": [
+      "ようこそ！IIIF Annotator へ🔍",
+      "マニフェストURLを入れると編集できるよ。",
+      "気になるところを矩形や多角形で囲んでね。",
+      "保存も忘れずに！データはこまめにバックアップを。",
+      "OCRボタンで画像から文字も読めるよ。",
+      "わたしをクリックすると、ひとことしゃべるよ。"
+    ]
+  },
+  "MascotPage": {
+    "backToHome": "ホームに戻る",
+    "title": "ルーペちゃんについて",
+    "lead": "「ルーペちゃん」は IIIF Annotator の案内役マスコットです。",
+    "nameHeading": "名前の由来",
+    "nameBody": "IIIF Annotator は、画像をじっくり拡大して観察し、気になる箇所に注釈を付けるツールです。その「拡大して見る」道具である虫めがね（ルーペ）をそのままキャラクターにしました。だから名前は「ルーペちゃん」。レンズの金属枠、ガラスのきらめき、持ち手まで、本物の虫めがねをかたどっています。",
+    "roleHeading": "役割",
+    "roles": [
+      "画面の右下に常駐し、操作のヒントをひとことで紹介します。",
+      "クリックするたびに表情とセリフが変わります。吹き出しの「×」で閉じられます。",
+      "アノテーション編集（エディタ）画面では、作業の邪魔にならないよう姿を消します。"
+    ],
+    "moodsHeading": "表情",
+    "moodsBody": "クリックすると、表情がくるくる移り変わります。",
+    "moodDefault": "ふつう",
+    "moodHappy": "うれしい",
+    "moodThinking": "考え中",
+    "designHeading": "デザイン",
+    "designBody": "ルーペちゃんはすべて SVG で描かれ、画像ファイルを使いません。配色はサイトのテーマ変数に合わせてあり、ダークモードにも自動で対応します。揺れやまばたきのアニメーションも含めて、ブラウザ内で軽量に動きます。",
+    "cta": "▶ さっそく使ってみる"
+  },
   "HomePage": {
     "warning": {
       "title": "重要なお知らせ",
@@ -82,11 +115,36 @@
     "enterText": "テキストを入力してください...",
     "thumbnails": "サムネイル",
     "layoutSingle": "1列表示",
-    "layoutGrid": "2列表示"
+    "layoutGrid": "2列表示",
+    "metadata": "メタデータ",
+    "addMetadataField": "項目を追加",
+    "metadataLabelPlaceholder": "項目名（例: 図面種別）",
+    "metadataValuePlaceholder": "値",
+    "removeMetadataField": "この項目を削除",
+    "selectVocabulary": "使用する語彙を選択"
+  },
+  "MetadataVocab": {
+    "title": "メタデータ項目（語彙）",
+    "description": "アノテーションに付与する「語彙」を管理します。語彙は名前付きのプロパティ集合（例: pj-a → 図面種別・制作年）で、複数作成できます。アノテーション編集時に語彙を選ぶと、そのプロパティが入力候補として表示されます（値は自由入力）。JSON で書き出し／読み込みでき、複数人で共有できます。",
+    "vocabularyNamePlaceholder": "語彙名（例: pj-a）",
+    "addVocabulary": "語彙を追加",
+    "removeVocabulary": "この語彙を削除",
+    "empty": "語彙がありません。「語彙を追加」で作成してください。",
+    "fieldPlaceholder": "項目名（例: 図面種別、制作年）",
+    "addField": "項目を追加",
+    "removeField": "削除",
+    "save": "保存",
+    "saved": "保存しました",
+    "export": "エクスポート",
+    "import": "インポート",
+    "importError": "インポートに失敗しました（JSON 形式を確認してください）。",
+    "importHint": "エクスポートした JSON を共有し、インポートで取り込めます。同名の語彙はプロパティがマージされます。"
   },
   "Auth": {
     "login": "ログイン",
     "logout": "ログアウト",
+    "myAnnotations": "マイアノテーション",
+    "vocabulary": "メタデータ語彙",
     "apiKeys": "APIキー管理",
     "createAccount": "アカウント作成",
     "signIn": "ログイン",

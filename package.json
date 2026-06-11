@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "dev:op": "op run --env-file=.env.local -- npm run dev",
     "start:op": "op run --env-file=.env.local -- npm run start"
   },
@@ -37,6 +39,7 @@
     "openseadragon": "^5.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-resizable-panels": "3.0.6",
     "xml-formatter": "^3.6.6"
   },
   "overrides": {
@@ -54,13 +57,19 @@
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.12",
     "@tailwindcss/typography": "^0.5.19",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.18.0",
     "@types/openseadragon": "^4.1.0",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.2.0",
     "eslint": "^9.34.0",
     "eslint-config-next": "^16.1.6",
+    "jsdom": "^26.1.0",
     "tailwindcss": "^4.1.12",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.6"
   }
 }

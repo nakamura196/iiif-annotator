@@ -69,3 +69,6 @@ nextjs-i18n-themes-ssr-template/
 .vscode/settings.json
 
 .env*.local
+
+# 録画デモの出力(動画・フレーム)
+/demo/

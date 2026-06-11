@@ -11,7 +11,7 @@ import ManifestLink from "./ManifestLink";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { HelpDialog } from "./HelpDialog";
 import { useTranslations } from 'next-intl';
-import { List, HelpCircle, Menu, X, BookMarked } from "lucide-react";
+import { List, HelpCircle, Menu, X } from "lucide-react";
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
@@ -70,15 +70,6 @@ export default function Header() {
               </button>
             )}
             <ManifestLink />
-            {user && (
-              <Link
-                href="/my-annotations"
-                className="p-2 text-[var(--ds-fg-muted)] hover:text-[var(--ds-fg)] transition-colors"
-                title={t('MyAnnotations.title')}
-              >
-                <BookMarked className="h-5 w-5" />
-              </Link>
-            )}
             <button
               onClick={() => setHelpOpen(true)}
               className="p-2 text-[var(--ds-fg-muted)] hover:text-[var(--ds-fg)] transition-colors"
@@ -128,18 +119,6 @@ export default function Header() {
             <div className="border-t border-[var(--ds-border)] pt-3">
               <ManifestLink />
             </div>
-
-            {user && (
-              <Link
-                href="/my-annotations"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 px-3 py-2 text-[var(--ds-fg-muted)]
-                  hover:bg-[var(--ds-surface-2)] rounded-md transition-colors"
-              >
-                <BookMarked className="h-5 w-5" />
-                {t('MyAnnotations.title')}
-              </Link>
-            )}
 
             <button
               onClick={() => {

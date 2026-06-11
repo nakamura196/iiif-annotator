@@ -72,6 +72,7 @@ async function buildIIIFManifest(manifestId: string, items: any[]): Promise<any>
           motivation: annotation.motivation,
           body: annotation.body,
           target: annotation.target,
+          ...(annotation.metadata ? { metadata: annotation.metadata } : {}),
         })),
       },
     ];
