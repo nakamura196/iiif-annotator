@@ -20,6 +20,9 @@ export async function setupRecorder({
   name = 'demo',
   viewport = { width: 1440, height: 900 },
   slowMo = 140,
+  // clean=true: 字幕の焼き込みをやめ、字幕は VTT(cues)として書き出す。
+  // YouTube に上げて CC トラックを付ける運用（既存デモと同じ）向け。
+  clean = false,
 } = {}) {
   const videosDir = resolve(outDir, 'videos');
   await mkdir(videosDir, { recursive: true });
@@ -93,23 +96,30 @@ export async function setupRecorder({
   page.setDefaultTimeout(30000);
   page.on('pageerror', (e) => console.log('[pageerror]', e.message));
 
+  // VTT 字幕用のキュー（録画開始からの相対秒）。t0 は概ね録画開始時刻。
+  const cues = [];
+  const t0 = Date.now();
+
   // 滑らかにカーソルを動かす（途中点を挟む）
   async function mouseTo(x, y, steps = 18) {
     await page.mouse.move(x, y, { steps });
     await page.waitForTimeout(120);
   }
 
-  // 字幕を出して一定時間ホールド
+  // 字幕を出して一定時間ホールド。clean=true のときは焼き込まず、VTT 用に記録のみ。
   async function scene(text, hold = 2600) {
-    await page
-      .evaluate((t) => {
-        const cap = document.getElementById('__cap__');
-        if (cap) {
-          cap.textContent = t;
-          cap.style.opacity = t ? '1' : '0';
-        }
-      }, text)
-      .catch(() => {});
+    cues.push({ start: (Date.now() - t0) / 1000, hold: hold / 1000, text });
+    if (!clean) {
+      await page
+        .evaluate((t) => {
+          const cap = document.getElementById('__cap__');
+          if (cap) {
+            cap.textContent = t;
+            cap.style.opacity = t ? '1' : '0';
+          }
+        }, text)
+        .catch(() => {});
+    }
     await page.waitForTimeout(hold);
   }
 
@@ -127,8 +137,8 @@ export async function setupRecorder({
         /* 別ファイル名のまま */
       }
     }
-    return { webm };
+    return { webm, cues };
   }
 
-  return { browser, context, page, mouseTo, scene, finalize };
+  return { browser, context, page, mouseTo, scene, finalize, cues };
 }

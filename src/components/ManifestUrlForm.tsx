@@ -14,7 +14,17 @@ export function ManifestUrlForm() {
   const router = useRouter();
   const t = useTranslations();
   const locale = useLocale();
-  const demoVideoId = locale === 'en' ? 'PdRgW_JgKsY' : 'qfIFvhhAEDQ';
+  // トップのデモ動画（YouTube）。基本操作に続けて、機能別のデモを並べる。
+  const demoVideos =
+    locale === 'en'
+      ? [
+          { id: 'PdRgW_JgKsY', label: 'Getting started' },
+          { id: 'oLixPGZSSYQ', label: 'Metadata vocabularies' },
+        ]
+      : [
+          { id: 'qfIFvhhAEDQ', label: '基本操作' },
+          { id: 'qzKj9YziH_E', label: 'メタデータ語彙の登録' },
+        ];
 
   const handleManifestSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,13 +57,22 @@ export function ManifestUrlForm() {
           {t('Common.title')}
         </SectionHeading>
 
-        <VideoEmbed
-          videoId={demoVideoId}
-          title={t('Common.title')}
-          captions
-          ccLangPref={locale}
-          hl={locale}
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {demoVideos.map((v) => (
+            <div key={v.id} className="space-y-2">
+              <p className="text-sm font-medium text-[var(--ds-fg-muted)] text-center">
+                {v.label}
+              </p>
+              <VideoEmbed
+                videoId={v.id}
+                title={v.label}
+                captions
+                ccLangPref={locale}
+                hl={locale}
+              />
+            </div>
+          ))}
+        </div>
 
         {/* Firebase Free Tier Warning */}
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
