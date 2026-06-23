@@ -10,6 +10,7 @@ import { Loader2, ChevronLeft, Folder, FileText, Grid3x3, List, ExternalLink } f
 import { convertPresentation2 } from "@iiif/parser/presentation-2";
 import Image from "next/image";
 import { ManifestViewer } from "@/components/ManifestViewer";
+import { getIIIFLabel } from "@/lib/utils/iiifLabel";
 import { buttonClass } from "@nakamura196/react-ui";
 
 // IIIF Presentation API v3 types
@@ -97,29 +98,9 @@ function CollectionContent() {
     fetchCollection();
   }, [collectionUrl, t]);
 
-  const getLabel = (label: string | { [key: string]: string[] } | undefined): string => {
-    if (!label) return "";
-    if (typeof label === "string") return label;
-    
-    // For v3 format: { "ja": ["ラベル"], "en": ["Label"] }
-    if (typeof label === "object") {
-      // Try to get current locale label first
-      if (locale in label && Array.isArray(label[locale])) {
-        return label[locale][0] || "";
-      }
-      // Try Japanese
-      if ("ja" in label && Array.isArray(label.ja)) {
-        return label.ja[0] || "";
-      }
-      // Fall back to first available language
-      const firstLang = Object.keys(label)[0];
-      if (firstLang && Array.isArray(label[firstLang])) {
-        return label[firstLang][0] || "";
-      }
-    }
-    
-    return "";
-  };
+  // v2/v3 どちらの label 形式にも対応する共有ヘルパーに委譲する
+  const getLabel = (label: string | { [key: string]: string[] } | undefined): string =>
+    getIIIFLabel(label, locale);
 
   const getSummary = (summary: { [key: string]: string[] } | undefined): string | null => {
     if (!summary) return null;

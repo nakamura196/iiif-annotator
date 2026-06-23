@@ -9,7 +9,8 @@ import type {
 } from "@annotorious/react";
 import "@annotorious/react/annotorious-react.css";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { getIIIFLabel } from "@/lib/utils/iiifLabel";
 import FirestoreAnnotationAdapter from "@/lib/FirestoreAnnotationAdapter";
 import { AnnotationList } from "@/components/annotation/AnnotationList";
 import { AnnotationForm } from "@/components/annotation/AnnotationForm";
@@ -55,8 +56,10 @@ function App() {
   const pathname = usePathname();
   const manifestUrl = searchParams.get("manifest");
   const t = useTranslations('Editor');
+  const locale = useLocale();
 
   const [infoUrls, setInfoUrls] = useState<string[]>([]);
+  const [manifestLabel, setManifestLabel] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [tool, setTool] = useState<"rectangle" | "polygon" | undefined>();
   const [user, setUser] = useState<User | null>(null);
@@ -142,6 +145,8 @@ function App() {
           manifest = convertPresentation2(manifest);
         }
 
+        setManifestLabel(getIIIFLabel(manifest.label, locale));
+
         const canvases = manifest.items; // .sequences?.[0]?.canvases || [];
         setCanvases(canvases);
 
@@ -195,7 +200,7 @@ function App() {
     }
 
     initialize();
-  }, [searchParams]);
+  }, [searchParams, locale]);
 
   // main
   useEffect(() => {
@@ -622,6 +627,16 @@ function App() {
   // 3 カラムの中身（幅・境界は外側のレイアウトが持つ）。
   const leftContent = (
     <div className="h-full flex flex-col overflow-hidden">
+        {manifestLabel && (
+          <div className="px-3 py-2 border-b border-[var(--ds-border)] flex-shrink-0">
+            <p
+              className="text-sm font-medium text-[var(--ds-fg)] truncate"
+              title={manifestLabel}
+            >
+              {manifestLabel}
+            </p>
+          </div>
+        )}
         <div className="border-b border-[var(--ds-border)] flex-shrink-0">
           {/* Tab switcher + page navigation */}
           <div className="flex items-center justify-between px-2 pt-2">
