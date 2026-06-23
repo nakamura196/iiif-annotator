@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
+import { getIIIFLabel } from "@/lib/utils/iiifLabel";
 import {
   collection,
   query,
@@ -40,8 +41,13 @@ interface Annotation {
 
 export default function MyAnnotationsPage() {
   const t = useTranslations("MyAnnotations");
+  const locale = useLocale();
   const [user, setUser] = useState<User | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  // manifestId(URL) → 表示用ラベルのキャッシュ。
+  // アノテーションには manifestId(URL) しか保存されていないため、
+  // ユニークなマニフェストを 1 回ずつ取得して label を解決する。
+  const [manifestLabels, setManifestLabels] = useState<Record<string, string>>({});
   const [filteredAnnotations, setFilteredAnnotations] = useState<Annotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -101,6 +107,35 @@ export default function MyAnnotationsPage() {
     return () => unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ユニークな manifestId のラベルをまとめて取得する。
+  useEffect(() => {
+    const ids = Array.from(
+      new Set(annotations.map((a) => a.manifestId).filter(Boolean))
+    );
+    if (ids.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        ids.map(async (id): Promise<[string, string]> => {
+          try {
+            const res = await fetch(id);
+            const manifest = await res.json();
+            // v2/v3 どちらの label でも getIIIFLabel が解決する
+            return [id, getIIIFLabel(manifest.label, locale)];
+          } catch {
+            return [id, ""];
+          }
+        })
+      );
+      if (!cancelled) setManifestLabels(Object.fromEntries(entries));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [annotations, locale]);
 
   useEffect(() => {
     if (searchQuery.trim() === "") {
@@ -252,7 +287,7 @@ export default function MyAnnotationsPage() {
                       <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4 flex-shrink-0" />
                         <span className="truncate" title={annotation.manifestId}>
-                          {annotation.manifestId}
+                          {manifestLabels[annotation.manifestId] || annotation.manifestId}
                         </span>
                       </div>
                     </div>
