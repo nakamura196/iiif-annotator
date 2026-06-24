@@ -42,7 +42,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-[var(--ds-bg)] border-b border-[var(--ds-border)] shadow-sm relative">
+    <header className="bg-[var(--ds-bg)] border-b border-[var(--ds-border)] shadow-sm relative z-[1100]">
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex-shrink-0">
