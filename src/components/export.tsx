@@ -42,7 +42,7 @@ export const Export = ({
 
     switch (format) {
       case "csv":
-        content = annotations.items
+        content = (annotations.items as Array<{ id: string; body?: { value?: string }[] }>)
           .map((a) => `${a.id},${a.body?.[0]?.value || ""}`)
           .join("\n");
         mimeType = "text/csv";

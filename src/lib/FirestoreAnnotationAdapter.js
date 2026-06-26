@@ -1,56 +1,22 @@
-import {
-  collection,
-  doc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  getDoc,
-  query,
-  where,
-  getDocs,
-  getFirestore,
-} from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { initializeApp, getApps } from "firebase/app";
 
-/** Firestore用のアノテーションアダプター */
+/**
+ * アノテーションのアダプター（API ファースト版）。
+ *
+ * 以前はブラウザの Firebase クライアント SDK で Firestore を直接読み書きしていたが、
+ * 作成時に採番される Firestore の doc ID と Annotorious の一時 ID がズレ、update/delete が
+ * 静かに失敗していた（catch で握り潰されて画面だけ更新されたように見える不具合）。
+ *
+ * 現在はサーバ側 REST API (/api/annotations) を唯一の書き込み経路とし、ブラウザは
+ * Firebase の ID トークン（Authorization: Bearer）で認証する。サーバが doc ID を
+ * 権威ある id として返すため、ID 不整合が構造的に発生しない。失敗は例外として
+ * 呼び出し側に伝播する（握り潰さない）。
+ */
 export default class FirestoreAnnotationAdapter {
-  static firestore = null;
-
-  /** Firebase初期化 */
-  static initialize() {
-    if (getApps().length === 0) {
-      const firebaseConfig = {
-        apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-        appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-        authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-        measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-        messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-      };
-
-      const app = initializeApp(firebaseConfig);
-      this.firestore = getFirestore(app);
-    } else {
-      this.firestore = getFirestore();
-    }
-    return this.firestore;
-  }
-
   /** */
   constructor(canvasId, manifestId) {
-    if (!FirestoreAnnotationAdapter.firestore) {
-      FirestoreAnnotationAdapter.initialize();
-    }
-
     this.canvasId = canvasId;
     this.manifestId = manifestId;
-
-    this.collectionRef = collection(
-      FirestoreAnnotationAdapter.firestore,
-      "annotations"
-    );
   }
 
   /** */
@@ -58,196 +24,166 @@ export default class FirestoreAnnotationAdapter {
     return `${this.canvasId}/annotations`;
   }
 
+  /** 現在ユーザの Firebase ID トークン付きヘッダ。未ログインなら null。 */
+  async authHeaders() {
+    const user = getAuth().currentUser;
+    if (!user) return null;
+    const token = await user.getIdToken();
+    return { Authorization: `Bearer ${token}` };
+  }
+
+  /** ISO 文字列を AnnotationList が期待する {seconds, nanoseconds} 形へ。 */
+  static toTimestamp(iso) {
+    if (!iso) return undefined;
+    const ms = Date.parse(iso);
+    if (Number.isNaN(ms)) return undefined;
+    return {
+      seconds: Math.floor(ms / 1000),
+      nanoseconds: (ms % 1000) * 1000000,
+      type: "firestore/timestamp/1.0",
+    };
+  }
+
+  /** API レスポンスのアノテーションを UI 用に整形（タイムスタンプ形を復元）。 */
+  static normalize(item) {
+    return {
+      ...item,
+      created: FirestoreAnnotationAdapter.toTimestamp(item.created),
+      modified: FirestoreAnnotationAdapter.toTimestamp(item.modified),
+    };
+  }
+
+  /** GET /api/annotations?manifestIds=... → 自 manifest 分の items を取り出す。 */
+  async fetchManifestItems() {
+    const headers = await this.authHeaders();
+    if (!headers) return [];
+    const url = `/api/annotations?manifestIds=${encodeURIComponent(this.manifestId)}`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      throw new Error(`アノテーションの取得に失敗しました (${res.status})`);
+    }
+    const data = await res.json();
+    const group = (data.annotations || []).find((g) => g.manifestId === this.manifestId);
+    return (group?.items || []).map(FirestoreAnnotationAdapter.normalize);
+  }
+
+  /** 失敗レスポンスからメッセージを取り出す。 */
+  static async errorMessage(res, fallback) {
+    try {
+      const data = await res.json();
+      if (data?.error) {
+        return data.details?.length ? `${data.error}: ${data.details.join(", ")}` : data.error;
+      }
+    } catch {
+      /* noop */
+    }
+    return `${fallback} (${res.status})`;
+  }
+
   /** */
   async create(annotation) {
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (!user) {
+    const headers = await this.authHeaders();
+    if (!headers) {
       window.alert("ログインが必要です");
       return null;
     }
-
-    const docRef = doc(this.collectionRef);
-    const annotationData = {
-      ...annotation,
-      canvasId: this.canvasId,
-      created: new Date(),
-      id: docRef.id,
+    const payload = {
       manifestId: this.manifestId,
-      modified: new Date(),
-      userId: user.uid,
-      userName: user.displayName,
+      canvasId: this.canvasId,
+      motivation: annotation.motivation,
+      type: annotation.type,
+      body: annotation.body,
+      target: annotation.target,
+      ...(annotation.metadata ? { metadata: annotation.metadata } : {}),
     };
-
-    await setDoc(docRef, annotationData);
+    const res = await fetch("/api/annotations", {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      throw new Error(await FirestoreAnnotationAdapter.errorMessage(res, "作成に失敗しました"));
+    }
     return this.all();
   }
 
   /** */
   async update(annotation) {
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (!user) {
+    const headers = await this.authHeaders();
+    if (!headers) {
       window.alert("ログインが必要です");
       return null;
     }
-
-    const docRef = doc(this.collectionRef, annotation.id);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-      throw new Error("アノテーションが見つかりません");
+    if (!annotation?.id) {
+      throw new Error("更新対象の id がありません");
     }
-
-    const existingData = docSnap.data();
-
-    if (existingData.userId !== user.uid) {
-      throw new Error("このアノテーションを編集する権限がありません");
-    }
-
-    const annotationData = {
-      ...annotation,
+    const payload = {
       manifestId: this.manifestId,
-      // Preserve the original created timestamp, or set it now if it doesn't exist
-      created: existingData.created || new Date(),
-      modified: new Date(),
+      canvasId: this.canvasId,
+      motivation: annotation.motivation,
+      type: annotation.type,
+      body: annotation.body,
+      target: annotation.target,
+      ...(annotation.metadata ? { metadata: annotation.metadata } : {}),
     };
-
-    await updateDoc(docRef, annotationData);
+    const res = await fetch(`/api/annotations/${encodeURIComponent(annotation.id)}`, {
+      method: "PUT",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      throw new Error(await FirestoreAnnotationAdapter.errorMessage(res, "更新に失敗しました"));
+    }
     return this.all();
   }
 
   /** */
   async delete(annoId) {
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (!user) {
+    const headers = await this.authHeaders();
+    if (!headers) {
       window.alert("ログインが必要です");
       return null;
     }
-
-    const docRef = doc(this.collectionRef, annoId);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-      throw new Error("アノテーションが見つかりません");
+    const res = await fetch(`/api/annotations/${encodeURIComponent(annoId)}`, {
+      method: "DELETE",
+      headers,
+    });
+    if (!res.ok) {
+      throw new Error(await FirestoreAnnotationAdapter.errorMessage(res, "削除に失敗しました"));
     }
-
-    if (docSnap.data().userId !== user.uid) {
-      throw new Error("このアノテーションを削除する権限がありません");
-    }
-
-    await deleteDoc(docRef);
     return this.all();
   }
 
   /** */
   async get(annoId) {
-    const docSnap = await getDoc(doc(this.collectionRef, annoId));
-    return docSnap.exists() ? docSnap.data() : null;
+    const headers = await this.authHeaders();
+    if (!headers) return null;
+    const res = await fetch(`/api/annotations/${encodeURIComponent(annoId)}`, { headers });
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      throw new Error(await FirestoreAnnotationAdapter.errorMessage(res, "取得に失敗しました"));
+    }
+    const data = await res.json();
+    return data.annotation ? FirestoreAnnotationAdapter.normalize(data.annotation) : null;
   }
 
-  /** Returns an AnnotationPage with all annotations */
+  /** Returns an AnnotationPage with this canvas' annotations */
   async all() {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    if (!user) {
-      return {
-        id: this.annotationPageId,
-        items: [],
-        type: "AnnotationPage",
-      };
-    }
-
-    const q = query(
-      this.collectionRef,
-      where("canvasId", "==", this.canvasId),
-      where("manifestId", "==", this.manifestId),
-      where("userId", "==", user.uid)
+    const items = (await this.fetchManifestItems()).filter(
+      (item) => item.canvasId === this.canvasId
     );
-
-    const querySnapshot = await getDocs(q);
-    const annotations = querySnapshot.docs.map((snapshot) => {
-      const data = snapshot.data();
-
-      // Helper function to convert timestamp to serializable format
-      const convertTimestamp = (timestamp) => {
-        if (!timestamp) return undefined;
-
-        // If it's a Firestore Timestamp (check for toDate method)
-        if (timestamp.toDate && typeof timestamp.toDate === 'function') {
-          const date = timestamp.toDate();
-          return {
-            seconds: Math.floor(date.getTime() / 1000),
-            nanoseconds: (date.getTime() % 1000) * 1000000,
-            type: "firestore/timestamp/1.0"
-          };
-        }
-
-        // If it's a Firestore Timestamp with seconds property
-        if (timestamp.seconds !== undefined && timestamp.nanoseconds !== undefined) {
-          return {
-            seconds: timestamp.seconds,
-            nanoseconds: timestamp.nanoseconds,
-            type: "firestore/timestamp/1.0"
-          };
-        }
-
-        // If it's a JavaScript Date object
-        if (timestamp instanceof Date) {
-          return {
-            seconds: Math.floor(timestamp.getTime() / 1000),
-            nanoseconds: (timestamp.getTime() % 1000) * 1000000,
-            type: "firestore/timestamp/1.0"
-          };
-        }
-
-        return undefined;
-      };
-
-      // Convert Firestore Timestamps to serializable format
-      return {
-        ...data,
-        created: convertTimestamp(data.created),
-        modified: convertTimestamp(data.modified),
-      };
-    });
-
     return {
       id: this.annotationPageId,
-      items: annotations,
+      items,
       type: "AnnotationPage",
     };
   }
 
-  /** Returns an AnnotationPage with all annotations */
+  /** Returns an AnnotationPage with all annotations of the manifest (全 canvas) */
   async export() {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    if (!user) {
-      return {
-        // id: this.annotationPageId,
-        items: [],
-        type: "AnnotationPage",
-      };
-    }
-
-    const q = query(
-      this.collectionRef,
-      // where("canvasId", "==", this.canvasId),
-      where("manifestId", "==", this.manifestId),
-      where("userId", "==", user.uid)
-    );
-
-    const querySnapshot = await getDocs(q);
-    const annotations = querySnapshot.docs.map((snapshot) => snapshot.data());
-
+    const items = await this.fetchManifestItems();
     return {
-      // id: this.annotationPageId,
-      items: annotations,
+      items,
       type: "AnnotationPage",
     };
   }
