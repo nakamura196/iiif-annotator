@@ -39,7 +39,6 @@ import { convertPresentation2 } from "@iiif/parser/presentation-2";
 import { Canvas } from "@iiif/presentation-3";
 import { Export } from "@/components/export";
 import { ManifestViewer } from "@/components/ManifestViewer";
-import { OCRProcessor } from "@/components/OCRProcessor";
 import { ScanText, ChevronLeft, ChevronRight, LayoutGrid, MessageSquareText } from "lucide-react";
 import Image from "next/image";
 import { ThumbnailPanel } from "@/components/annotation/ThumbnailPanel";
@@ -47,6 +46,15 @@ import { SidebarThumbnails } from "@/components/annotation/SidebarThumbnails";
 // コンポーネントの動的インポート
 const DynamicAnnotorious = dynamic(
   () => import("@annotorious/react").then((mod) => mod.Annotorious),
+  { ssr: false }
+);
+
+// OCRProcessor は onnxruntime-web(external 'ort') を読み込む OCR パッケージに
+// 依存する。静的 import すると item ページ表示時に OCR チャンクが評価され、
+// グローバル `ort` がまだ未定義のタイミングで参照して "ort is not defined" に
+// なりうる。OCR モーダルを開くまで評価を遅延させて回避する。
+const OCRProcessor = dynamic(
+  () => import("@/components/OCRProcessor").then((mod) => mod.OCRProcessor),
   { ssr: false }
 );
 
@@ -283,6 +291,38 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anno, currentPage, user]);
 
+  // items を Annotorious キャンバスへ反映（clear して再追加）。
+  // 常にサーバ（API）が返す正規の id を持つ items を描画するための共通処理。
+  const renderItemsToCanvas = useCallback(
+    (items: Annotation[]) => {
+      if (!anno) return;
+      try {
+        const converted = convertMultipleAnnotations(items as AnnotationWidthSingleBody[]);
+        anno.clearAnnotations();
+        for (const a of converted) {
+          try {
+            anno.addAnnotation(a);
+          } catch {
+            /* 個別の追加失敗はスキップ */
+          }
+        }
+      } catch {
+        /* noop */
+      }
+    },
+    [anno]
+  );
+
+  // サーバから再取得して results と canvas を同期する。作成/更新/削除の後に必ず呼ぶ。
+  // これにより Annotorious 側の一時 id がサーバの doc id に揃い、続く編集/削除が
+  // 正しいドキュメントを指す（旧実装の id 不整合バグの根本対策）。
+  const reloadAnnotations = useCallback(async () => {
+    if (!adapter) return;
+    const result = await adapter.all();
+    setResults(result.items as Annotation[]);
+    renderItemsToCanvas(result.items as Annotation[]);
+  }, [adapter, renderItemsToCanvas]);
+
   // Update URL when page changes
   const updateURLWithPage = useCallback((page: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -318,24 +358,20 @@ function App() {
 
     try {
       for (const id of ids) {
-        anno.removeAnnotation(id);
-
         const ex = results.find((r) => r.id === id);
         if (ex) {
           await adapter.delete(id);
         }
       }
-
-      // Update results after deletion
-      setResults((prevResults) =>
-        prevResults.filter((r) => !ids.includes(r.id))
-      );
-    } catch {
-      // Failed to delete annotation
+      // サーバの状態で results / canvas を再同期（削除済みは返らない）
+      await reloadAnnotations();
+    } catch (e) {
+      // 失敗は握り潰さずユーザーに通知し、サーバの正で UI を復元する
+      alert(`削除に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
+      await reloadAnnotations();
     }
 
     setSelectedAnnotationId(null);
-    // setSelectedAnnotation(null);
     setTool(undefined);
   };
 
@@ -487,16 +523,17 @@ function App() {
       }
     }
 
-    if (ex) {
-      const updated = await adapter?.update(iiifAnnotation);
-      if (updated) {
-        setResults(updated.items as Annotation[]);
+    try {
+      if (ex) {
+        await adapter?.update(iiifAnnotation);
+      } else {
+        await adapter?.create(iiifAnnotation);
       }
-    } else {
-      const created = await adapter?.create(iiifAnnotation);
-      if (created) {
-        setResults(created.items as Annotation[]);
-      }
+      // 作成後はサーバ採番の id に揃える必要があるため、必ず再取得して同期する
+      await reloadAnnotations();
+    } catch (e) {
+      alert(`保存に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
+      await reloadAnnotations();
     }
 
     setTool(undefined);
@@ -923,8 +960,7 @@ function App() {
               if (adapter && newAnnotations.length > 0) {
                 try {
                   const canvasId = canvases[currentPage]?.["id"];
-                  const iiifAnnotations = [];
-                  
+
                   for (const annotation of newAnnotations) {
                     const iiifAnnotation = convertAnnotoriousToIIIF(
                       annotation as unknown as ImageAnnotation,
@@ -932,12 +968,11 @@ function App() {
                       manifestUrl || ""
                     );
                     await adapter.create(iiifAnnotation);
-                    iiifAnnotations.push(iiifAnnotation);
                   }
-                  
-                  setResults([...results, ...iiifAnnotations]);
+
+                  // サーバ採番の id に揃えるため再取得して同期
+                  await reloadAnnotations();
                 } catch {
-                  // Handle error silently or show single error message
                   alert("アノテーションの保存に失敗しました");
                 }
               }

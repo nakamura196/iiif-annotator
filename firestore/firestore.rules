@@ -3,9 +3,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /annotations/{annotation} {
       allow read: if true;  // 誰でも読み取り可能
-      allow create: if request.auth != null;  // 認証済みユーザーのみ作成可能
-      allow update, delete: if request.auth != null &&
-        resource.data.userId == request.auth.uid;  // 作成者のみ更新・削除可能
+      // 書き込みはサーバ API (/api/annotations, Admin SDK) のみに一本化した。
+      // Admin SDK はセキュリティルールをバイパスするため API は動作する。
+      // クライアント SDK からの直接書き込みは禁止（作成時の doc ID 不整合バグの再発防止 +
+      // 所有者チェック/検証をサーバ側に集約するため）。
+      allow write: if false;
     }
 
     match /routes/{route} {
