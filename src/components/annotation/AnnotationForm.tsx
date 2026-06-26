@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Loader2 } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import { buttonClass } from "@nakamura196/react-ui";
 
@@ -26,7 +26,7 @@ interface AnnotationFormProps {
   vocabularies?: VocabularyOption[];
   selectedVocabId?: string;
   onSelectVocab?: (id: string) => void;
-  onChange: (text: string, metadata: MetadataField[]) => void;
+  onChange: (text: string, metadata: MetadataField[]) => void | Promise<void>;
   onDelete: (ids: string[]) => void;
 }
 
@@ -47,6 +47,8 @@ export function AnnotationForm({
   const [editorContent, setEditorContent] = useState(text);
   // メタデータ(key-value)行の状態
   const [rows, setRows] = useState<MetadataField[]>(metadata || []);
+  // 保存中フラグ（サーバ書き込み中はボタンをローディング表示＆無効化して二重送信を防ぐ）
+  const [saving, setSaving] = useState(false);
   const t = useTranslations('Editor');
 
   useEffect(() => {
@@ -70,10 +72,16 @@ export function AnnotationForm({
     setRows((prev) => [...prev, { label: "", value: "" }]);
   };
 
-  // フォーム送信時の処理
-  const handleSubmit = (e: React.FormEvent) => {
+  // フォーム送信時の処理。書き込み完了まで saving 中にしてローディング表示する。
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onChange(editorContent, rows);
+    if (saving) return;
+    setSaving(true);
+    try {
+      await onChange(editorContent, rows);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -164,13 +172,26 @@ export function AnnotationForm({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          <button type="submit" className={buttonClass("primary", "sm", "flex-1")}>
+          <button
+            type="submit"
+            disabled={saving}
+            aria-busy={saving}
+            className={buttonClass(
+              "primary",
+              "sm",
+              "flex-1 disabled:opacity-60 disabled:cursor-not-allowed"
+            )}
+          >
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
             {t('saveChanges')}
-            <kbd className="ml-2 px-1.5 py-0.5 text-xs font-mono rounded bg-white/20">⌘S</kbd>
+            {!saving && (
+              <kbd className="ml-2 px-1.5 py-0.5 text-xs font-mono rounded bg-white/20">⌘S</kbd>
+            )}
           </button>
           {id && (
             <button
               type="button"
+              disabled={saving}
               onClick={() => onDelete([id])}
               className="inline-flex items-center justify-center gap-2 rounded-lg
                 px-3 sm:px-4 py-1.5 text-sm font-medium transition-colors

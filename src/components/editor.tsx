@@ -41,6 +41,7 @@ import { Export } from "@/components/export";
 import { ManifestViewer } from "@/components/ManifestViewer";
 import { ScanText, ChevronLeft, ChevronRight, LayoutGrid, MessageSquareText } from "lucide-react";
 import Image from "next/image";
+import { toast } from "sonner";
 import { ThumbnailPanel } from "@/components/annotation/ThumbnailPanel";
 import { SidebarThumbnails } from "@/components/annotation/SidebarThumbnails";
 // コンポーネントの動的インポート
@@ -355,6 +356,14 @@ function App() {
 
   const handleDelete = async (ids: string[]) => {
     if (!adapter) return;
+    if (ids.length === 0) return;
+
+    // 削除は永続（取り消し不可）なので確認を取る
+    const message =
+      ids.length === 1
+        ? "このアノテーションを削除します。よろしいですか？"
+        : `選択した ${ids.length} 件のアノテーションを削除します。よろしいですか？`;
+    if (!window.confirm(message)) return;
 
     try {
       for (const id of ids) {
@@ -365,9 +374,10 @@ function App() {
       }
       // サーバの状態で results / canvas を再同期（削除済みは返らない）
       await reloadAnnotations();
+      toast.success(ids.length === 1 ? "アノテーションを削除しました" : `${ids.length} 件削除しました`);
     } catch (e) {
       // 失敗は握り潰さずユーザーに通知し、サーバの正で UI を復元する
-      alert(`削除に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(`削除に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
       await reloadAnnotations();
     }
 
@@ -531,8 +541,9 @@ function App() {
       }
       // 作成後はサーバ採番の id に揃える必要があるため、必ず再取得して同期する
       await reloadAnnotations();
+      toast.success(ex ? "アノテーションを更新しました" : "アノテーションを追加しました");
     } catch (e) {
-      alert(`保存に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(`保存に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
       await reloadAnnotations();
     }
 
@@ -972,8 +983,9 @@ function App() {
 
                   // サーバ採番の id に揃えるため再取得して同期
                   await reloadAnnotations();
+                  toast.success(`${newAnnotations.length} 件のアノテーションを追加しました`);
                 } catch {
-                  alert("アノテーションの保存に失敗しました");
+                  toast.error("アノテーションの保存に失敗しました");
                 }
               }
             }
