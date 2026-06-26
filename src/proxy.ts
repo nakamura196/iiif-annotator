@@ -14,6 +14,8 @@ export const config = {
     // Skip all static files (images, fonts, etc.)
     // Skip models and config directories for OCR
     // Skip ONNX runtime files
-    '/((?!_next|api|favicon.ico|models|config|.*\\..*|ort-.*|.*\\.wasm|.*\\.onnx).*)'
+    // 注: `api` は `api(?:/|$)` に限定する。単に `api` だと `/api-docs` のような
+    // 「api で始まるページ」まで i18n リライトから除外されて 404 になるため。
+    '/((?!_next|api(?:/|$)|favicon.ico|models|config|.*\\..*|ort-.*|.*\\.wasm|.*\\.onnx).*)'
   ]
 };
