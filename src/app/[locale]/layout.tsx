@@ -93,11 +93,15 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* ONNX Runtime Web をグローバル `ort` として読み込む。next.config.ts で
+            onnxruntime-web を external('ort') にしているため、OCR チャンクが評価
+            される前にこの単一の beforeInteractive スクリプトで window.ort を定義
+            しておく必要がある。バージョンは package.json の依存(^1.22.0)および
+            OCR パッケージの最低要件(^1.16.0)に合わせる。 */}
         <Script
-          src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"
+          src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.min.js"
           strategy="beforeInteractive"
         />
-        <Script src="/ort-init.js" strategy="beforeInteractive" />
       </head>
       <body className="antialiased min-h-screen flex flex-col">
         <NextIntlClientProvider messages={messages}>
