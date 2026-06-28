@@ -16,6 +16,7 @@
 test-*.spec.ts
 test-*.mjs
 test-*.png
+.pw-*.mjs
 
 # next.js
 /.next/
