@@ -39,7 +39,9 @@ import { convertPresentation2 } from "@iiif/parser/presentation-2";
 import { Canvas } from "@iiif/presentation-3";
 import { Export } from "@/components/export";
 import { ManifestViewer } from "@/components/ManifestViewer";
-import { ScanText, ChevronLeft, ChevronRight, LayoutGrid, MessageSquareText, Loader2 } from "lucide-react";
+import { ScanText, ChevronLeft, ChevronRight, LayoutGrid, MessageSquareText, Loader2, Info } from "lucide-react";
+import { MetadataPanel, type ManifestMeta } from "@/components/annotation/MetadataPanel";
+import { extractManifestMeta } from "@/lib/utils/iiifMetadata";
 import Image from "next/image";
 import { toast } from "sonner";
 import { ThumbnailPanel } from "@/components/annotation/ThumbnailPanel";
@@ -69,6 +71,7 @@ function App() {
 
   const [infoUrls, setInfoUrls] = useState<string[]>([]);
   const [manifestLabel, setManifestLabel] = useState<string>("");
+  const [manifestMeta, setManifestMeta] = useState<ManifestMeta | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [tool, setTool] = useState<"rectangle" | "polygon" | undefined>();
   const [user, setUser] = useState<User | null>(null);
@@ -119,7 +122,19 @@ function App() {
   const [isManifestViewerOpen, setIsManifestViewerOpen] = useState(false);
   const [isOCROpen, setIsOCROpen] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState<string>("");
-  const [sidebarTab, setSidebarTab] = useState<"annotations" | "thumbnails">("annotations");
+  const [sidebarTab, setSidebarTab] = useState<"annotations" | "thumbnails" | "info">("annotations");
+
+  // 「情報」タブ用: manifest のメタデータに、表示中 canvas の label/寸法を加える。
+  const infoMeta = useMemo<ManifestMeta>(() => {
+    const canvasPairs: { label: string; value: string }[] = [];
+    const c = canvases[currentPage] as { label?: unknown; width?: number; height?: number } | undefined;
+    if (c) {
+      const cl = getIIIFLabel(c.label as never, locale);
+      if (cl) canvasPairs.push({ label: "Label", value: cl });
+      if (c.width && c.height) canvasPairs.push({ label: "Size", value: `${c.width} × ${c.height}` });
+    }
+    return { ...(manifestMeta || { pairs: [] }), canvas: canvasPairs };
+  }, [manifestMeta, canvases, currentPage, locale]);
 
   // lg 以上でだけ 3 カラムをリサイズ可能にする（未満はモバイル縦積み）。
   // App は dynamic(ssr:false) のためハイドレーション不整合は起きない。
@@ -181,6 +196,7 @@ function App() {
         }
 
         setManifestLabel(getIIIFLabel(manifest.label, locale));
+        setManifestMeta(extractManifestMeta(manifest, locale));
 
         const canvases = manifest.items; // .sequences?.[0]?.canvases || [];
         setCanvases(canvases);
@@ -775,6 +791,18 @@ function App() {
                 <LayoutGrid className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{t('thumbnails')}</span>
               </button>
+              <button
+                onClick={() => setSidebarTab("info")}
+                className={`flex items-center gap-1 px-2 py-1.5 text-xs rounded-t transition-colors
+                  ${sidebarTab === "info"
+                    ? "bg-[var(--ds-bg)] text-[var(--ds-primary)] border border-b-0 border-[var(--ds-border)] font-medium"
+                    : "text-[var(--ds-fg-muted)] hover:text-[var(--ds-fg)] hover:bg-[var(--ds-surface-2)]"
+                  }`}
+                title={t('metadata')}
+              >
+                <Info className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t('metadata')}</span>
+              </button>
             </div>
             {/* Page info + navigation */}
             <div className="flex items-center gap-1">
@@ -825,6 +853,8 @@ function App() {
             onFocus={handleFocus}
             selectedId={selectedAnnotationId || undefined}
           />
+        ) : sidebarTab === "info" ? (
+          <MetadataPanel meta={infoMeta} emptyLabel={t('noMetadata')} />
         ) : (
           <SidebarThumbnails
             canvases={canvases}

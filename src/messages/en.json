@@ -114,6 +114,7 @@
     "deleteAnnotation": "Delete",
     "enterText": "Enter text...",
     "thumbnails": "Thumbnails",
+    "noMetadata": "No metadata available",
     "layoutSingle": "Single column",
     "layoutGrid": "Grid view",
     "metadata": "Metadata",

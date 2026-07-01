@@ -114,6 +114,7 @@
     "deleteAnnotation": "削除",
     "enterText": "テキストを入力してください...",
     "thumbnails": "サムネイル",
+    "noMetadata": "メタデータがありません",
     "layoutSingle": "1列表示",
     "layoutGrid": "2列表示",
     "metadata": "メタデータ",
