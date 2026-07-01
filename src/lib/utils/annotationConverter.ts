@@ -153,7 +153,8 @@ export function convertAnnotoriousToIIIF(
   annotation: ImageAnnotation,
   infoUrl: string,
   manifestUrl: string,
-  metadata?: MetadataField[]
+  metadata?: MetadataField[],
+  tags?: string[]
 ) {
   const iiifAnnotation: AnnotationWidthSingleBody = {
     id: annotation.id,
@@ -177,6 +178,14 @@ export function convertAnnotoriousToIIIF(
       label: m.label.trim(),
       value: m.value.trim(),
     }));
+  }
+
+  // タグは常に配列で送る（空配列＝全タグ削除の意思表示。undefined だとサーバ側で無変更）。
+  if (tags !== undefined) {
+    const seen = new Set<string>();
+    iiifAnnotation.tags = tags
+      .map((t) => (typeof t === "string" ? t.trim() : ""))
+      .filter((t) => t && !seen.has(t) && seen.add(t));
   }
 
   return iiifAnnotation;

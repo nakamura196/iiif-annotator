@@ -16,6 +16,8 @@ export interface Annotation {
   manifestId?: string;
   canvasId?: string;
   metadata?: MetadataField[];
+  // 自由記述タグ（例: ["OCR"]）。メタデータ(label/value)とは別立ての単純な文字列集合。
+  tags?: string[];
   target: {
     selector: {
       type: string;

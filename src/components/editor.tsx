@@ -555,7 +555,11 @@ function App() {
     });
   }, [anno, results]);
 
-  const handleChange = async (text: string, metadata: MetadataField[] = []) => {
+  const handleChange = async (
+    text: string,
+    metadata: MetadataField[] = [],
+    tags: string[] = []
+  ) => {
     const updatedAnnotation = anno
       ?.getAnnotations()
       .find((a) => a.id === selectedAnnotationId);
@@ -577,7 +581,8 @@ function App() {
       updatedAnnotation as unknown as ImageAnnotation,
       canvasId,
       manifestUrl,
-      metadata
+      metadata,
+      tags
     );
 
     // 新しく使われた項目名は、選択中の語彙に追記（候補として再利用できるように）。
@@ -910,6 +915,7 @@ function App() {
           metadata={
             results.find((r) => r.id === selectedAnnotationId)?.metadata || []
           }
+          tags={results.find((r) => r.id === selectedAnnotationId)?.tags || []}
           vocabulary={activeProperties}
           vocabularies={vocabularies.map((v) => ({ id: v.id, name: v.name }))}
           selectedVocabId={selectedVocabId}

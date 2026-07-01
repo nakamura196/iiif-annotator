@@ -64,6 +64,7 @@ export interface StoredItem {
   body?: unknown;
   target?: unknown;
   metadata?: unknown;
+  tags?: string[];
   userName?: string | null;
   created?: unknown;
   modified?: unknown;
@@ -78,6 +79,7 @@ export interface SerializedAnnotation {
   body?: unknown;
   target?: unknown;
   metadata?: unknown;
+  tags?: string[];
   userId?: string;
   userName?: string | null;
   created: string | null;
@@ -124,6 +126,47 @@ function itemsByteSize(items: StoredItem[]): number {
   return Buffer.byteLength(JSON.stringify(items), 'utf8');
 }
 
+// --- タグ絞り込み ------------------------------------------------------------
+// クエリ `tag` を include/exclude に分解する。先頭 `-` は除外、カンマ区切り複数可。
+//   tag=OCR      → OCR を持つものだけ
+//   tag=-OCR     → OCR を持たないものだけ
+//   tag=A,-B     → A を持ち、かつ B を持たないもの
+export interface TagFilter {
+  include: string[];
+  exclude: string[];
+}
+
+export function parseTagFilter(raw: string | null | undefined): TagFilter | null {
+  if (!raw) return null;
+  const include: string[] = [];
+  const exclude: string[] = [];
+  for (const tok of raw.split(',').map((s) => s.trim()).filter(Boolean)) {
+    if (tok.startsWith('-')) {
+      const t = tok.slice(1).trim();
+      if (t) exclude.push(t);
+    } else {
+      include.push(tok);
+    }
+  }
+  return include.length || exclude.length ? { include, exclude } : null;
+}
+
+/** include はいずれか1つ以上を持つ(OR)、exclude はどれも持たない、で判定。 */
+export function matchesTagFilter(tags: unknown, f: TagFilter): boolean {
+  const t = Array.isArray(tags) ? (tags as string[]) : [];
+  if (f.exclude.some((x) => t.includes(x))) return false;
+  if (f.include.length && !f.include.some((x) => t.includes(x))) return false;
+  return true;
+}
+
+export function filterAnnotationsByTag(
+  items: SerializedAnnotation[],
+  f: TagFilter | null
+): SerializedAnnotation[] {
+  if (!f) return items;
+  return items.filter((it) => matchesTagFilter(it.tags, f));
+}
+
 export interface CreateOptions {
   userName?: string | null;
   /** テスト等で時刻を固定したい場合に注入。既定は new Date()。 */
@@ -153,6 +196,7 @@ export async function createAnnotation(
     modified: now,
   };
   if (input.metadata !== undefined) item.metadata = input.metadata;
+  if (input.tags !== undefined) item.tags = input.tags;
   // id は `${64hex}_${shard}:${uuid}` 形。実長に近い定数でサイズを見積もる。
   const newItemBytes = itemsByteSize([{ ...item, id: `${base}_0:${randomUUID()}` }]);
 
@@ -249,6 +293,7 @@ export async function updateAnnotation(
     if (input.motivation !== undefined) patched.motivation = input.motivation;
     if (input.type !== undefined) patched.type = input.type;
     if (input.metadata !== undefined) patched.metadata = input.metadata;
+    if (input.tags !== undefined) patched.tags = input.tags;
 
     items[idx] = patched;
     if (itemsByteSize(items) > SHARD_HARD_LIMIT_BYTES) {

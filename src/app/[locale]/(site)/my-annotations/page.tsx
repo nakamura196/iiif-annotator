@@ -41,6 +41,7 @@ interface Annotation {
   modified: Date;
   target: unknown;
   body: AnnotationBody | AnnotationBody[];
+  tags?: string[];
 }
 
 type View = "manifests" | "canvases" | "annotations";
@@ -75,6 +76,8 @@ export default function MyAnnotationsPage() {
   const [canvasAnnos, setCanvasAnnos] = useState<Annotation[]>([]);
   const [annoLoading, setAnnoLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // タグ絞り込み: all=すべて / exclude-ocr=OCR除外 / only-ocr=OCRのみ
+  const [tagMode, setTagMode] = useState<"all" | "exclude-ocr" | "only-ocr">("all");
 
   // 概要（manifest×canvas の件数だけ）を取得する。read はシャード数だけで payload は極小。
   const loadSummary = async (currentUser: User) => {
@@ -358,6 +361,18 @@ export default function MyAnnotationsPage() {
                   bg-[var(--ds-bg)] text-[var(--ds-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-ring)]"
               />
             </div>
+            <select
+              value={tagMode}
+              onChange={(e) => setTagMode(e.target.value as typeof tagMode)}
+              className="px-3 py-2 text-sm border border-[var(--ds-border)] rounded-md
+                bg-[var(--ds-bg)] text-[var(--ds-fg)] cursor-pointer flex-shrink-0
+                focus:outline-none focus:ring-2 focus:ring-[var(--ds-ring)]"
+              title={t("tagFilter")}
+            >
+              <option value="all">{t("tagAll")}</option>
+              <option value="exclude-ocr">{t("tagExcludeOcr")}</option>
+              <option value="only-ocr">{t("tagOnlyOcr")}</option>
+            </select>
             <Link
               href={getItemLink(selManifest.manifestId, selCanvas)}
               className="inline-flex items-center gap-1 px-3 py-2 text-sm rounded-md
@@ -375,9 +390,16 @@ export default function MyAnnotationsPage() {
           ) : (
             (() => {
               const q = searchQuery.trim().toLowerCase();
-              const filtered = q
-                ? canvasAnnos.filter((a) => getAnnotationText(a).toLowerCase().includes(q))
-                : canvasAnnos;
+              const hasOcr = (a: Annotation) => (a.tags || []).includes("OCR");
+              const filtered = canvasAnnos
+                .filter((a) => (q ? getAnnotationText(a).toLowerCase().includes(q) : true))
+                .filter((a) =>
+                  tagMode === "exclude-ocr"
+                    ? !hasOcr(a)
+                    : tagMode === "only-ocr"
+                    ? hasOcr(a)
+                    : true
+                );
               if (filtered.length === 0) {
                 return (
                   <div className="text-center py-12">
@@ -400,6 +422,22 @@ export default function MyAnnotationsPage() {
                             </p>
                             <ExternalLink className="h-4 w-4 text-[var(--ds-fg-muted)] flex-shrink-0 mt-0.5" />
                           </div>
+                          {(a.tags || []).filter((t) => t?.trim()).length > 0 && (
+                            <div className="mb-2 flex flex-wrap gap-1">
+                              {(a.tags || [])
+                                .filter((t) => t?.trim())
+                                .map((tag, i) => (
+                                  <span
+                                    key={i}
+                                    className="inline-flex items-center px-1.5 py-0.5 rounded
+                                      text-[11px] leading-tight font-medium
+                                      bg-[var(--ds-primary)] text-white"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                            </div>
+                          )}
                           <div className="flex items-center gap-2 text-sm text-[var(--ds-fg-muted)]">
                             <Calendar className="h-4 w-4 flex-shrink-0" />
                             <span>{formatDate(a.modified)}</span>

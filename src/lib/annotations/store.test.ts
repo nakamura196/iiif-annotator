@@ -95,7 +95,11 @@ import {
   listAnnotationsByManifests,
   listCanvasAnnotations,
   listAllUserAnnotations,
+  parseTagFilter,
+  matchesTagFilter,
+  filterAnnotationsByTag,
   AnnotationError,
+  type SerializedAnnotation,
 } from './store';
 
 const baseInput = {
@@ -257,5 +261,40 @@ describe('listAllUserAnnotations', () => {
     const mine = await listAllUserAnnotations('user-1');
     expect(mine).toHaveLength(2);
     expect(mine.every((a) => a.userId === 'user-1')).toBe(true);
+  });
+});
+
+describe('createAnnotation with tags', () => {
+  it('tags を保存し listCanvasAnnotations で返す', async () => {
+    await createAnnotation('user-tag', { ...baseInput, tags: ['OCR'] });
+    const list = await listCanvasAnnotations('user-tag', baseInput.manifestId, baseInput.canvasId);
+    expect(list[0].tags).toEqual(['OCR']);
+  });
+});
+
+describe('tag filter helpers', () => {
+  it('parseTagFilter: include/exclude を分解', () => {
+    expect(parseTagFilter('OCR')).toEqual({ include: ['OCR'], exclude: [] });
+    expect(parseTagFilter('-OCR')).toEqual({ include: [], exclude: ['OCR'] });
+    expect(parseTagFilter('A,-B')).toEqual({ include: ['A'], exclude: ['B'] });
+    expect(parseTagFilter('')).toBeNull();
+    expect(parseTagFilter(null)).toBeNull();
+  });
+
+  it('matchesTagFilter: include=OR / exclude=どれも持たない', () => {
+    expect(matchesTagFilter(['OCR'], { include: ['OCR'], exclude: [] })).toBe(true);
+    expect(matchesTagFilter([], { include: ['OCR'], exclude: [] })).toBe(false);
+    expect(matchesTagFilter(['OCR'], { include: [], exclude: ['OCR'] })).toBe(false);
+    expect(matchesTagFilter([], { include: [], exclude: ['OCR'] })).toBe(true);
+    expect(matchesTagFilter(undefined, { include: [], exclude: ['OCR'] })).toBe(true);
+  });
+
+  it('filterAnnotationsByTag: tag=-OCR で OCR を除外', () => {
+    const items = [
+      { id: 'a', tags: ['OCR'], created: null, modified: null },
+      { id: 'b', created: null, modified: null },
+    ] as SerializedAnnotation[];
+    const out = filterAnnotationsByTag(items, parseTagFilter('-OCR'));
+    expect(out.map((x) => x.id)).toEqual(['b']);
   });
 });

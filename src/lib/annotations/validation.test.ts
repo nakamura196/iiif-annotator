@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateCreate, validateUpdate, normalizeMetadata } from './validation';
+import { validateCreate, validateUpdate, normalizeMetadata, normalizeTags } from './validation';
 
 const validTarget = {
   selector: { type: 'FragmentSelector', value: 'xywh=1,2,3,4' },
@@ -20,6 +20,35 @@ describe('normalizeMetadata', () => {
   it('配列でなければ undefined', () => {
     expect(normalizeMetadata('nope')).toBeUndefined();
     expect(normalizeMetadata(undefined)).toBeUndefined();
+  });
+});
+
+describe('normalizeTags', () => {
+  it('非空・trim・重複排除した文字列配列にする', () => {
+    expect(normalizeTags([' OCR ', 'OCR', '', 'foo', 123 as unknown as string])).toEqual([
+      'OCR',
+      'foo',
+    ]);
+  });
+  it('空配列は空配列のまま（全タグ削除の表現）', () => {
+    expect(normalizeTags([])).toEqual([]);
+  });
+  it('配列でなければ undefined', () => {
+    expect(normalizeTags('OCR')).toBeUndefined();
+    expect(normalizeTags(undefined)).toBeUndefined();
+  });
+});
+
+describe('validateUpdate tags', () => {
+  it('tags だけの部分更新は valid', () => {
+    const r = validateUpdate({ tags: ['OCR'] });
+    expect(r.valid).toBe(true);
+    expect(r.value.tags).toEqual(['OCR']);
+  });
+  it('tags:[] （全タグ削除）も valid', () => {
+    const r = validateUpdate({ tags: [] });
+    expect(r.valid).toBe(true);
+    expect(r.value.tags).toEqual([]);
   });
 });
 

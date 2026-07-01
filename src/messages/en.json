@@ -122,6 +122,10 @@
     "metadataLabelPlaceholder": "Field (e.g. Drawing type)",
     "metadataValuePlaceholder": "Value",
     "removeMetadataField": "Remove field",
+    "tags": "Tags",
+    "addTag": "Add tag",
+    "removeTag": "Remove tag",
+    "tagPlaceholder": "Tag (e.g. OCR)",
     "selectVocabulary": "Select vocabulary"
   },
   "MetadataVocab": {
@@ -166,6 +170,10 @@
     "sortOldest": "Oldest first",
     "sortTextAsc": "Text (A-Z)",
     "sortTextDesc": "Text (Z-A)",
+    "tagFilter": "Filter by tag",
+    "tagAll": "All tags",
+    "tagExcludeOcr": "Exclude OCR",
+    "tagOnlyOcr": "OCR only",
     "locale": "en",
     "created": "Created",
     "modified": "Modified",
@@ -254,7 +262,11 @@
     "backToCanvases": "Back to canvases",
     "canvasCount": "{count} canvas(es)",
     "annotationCount": "{count} annotation(s)",
-    "openInEditor": "Open in editor"
+    "openInEditor": "Open in editor",
+    "tagFilter": "Filter by tag",
+    "tagAll": "All tags",
+    "tagExcludeOcr": "Exclude OCR",
+    "tagOnlyOcr": "OCR only"
   },
   "Changelog": {
     "title": "Changelog",

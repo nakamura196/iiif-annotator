@@ -16,6 +16,9 @@ type SortOption = 'created-desc' | 'created-asc' | 'text-asc' | 'text-desc';
 const getMetadataFields = (annotation: AnnotationWithMultipleBodies) =>
   (annotation.metadata || []).filter((m) => m?.label?.trim() || m?.value?.trim());
 
+const getTags = (annotation: AnnotationWithMultipleBodies) =>
+  (annotation.tags || []).filter((t) => typeof t === 'string' && t.trim());
+
 const getAnnotationText = (annotation: AnnotationWithMultipleBodies) => {
   // Handle both array and object body formats
   if (Array.isArray(annotation.body)) {
@@ -74,6 +77,7 @@ export function AnnotationList({
 }: AnnotationListProps) {
   const t = useTranslations('AnnotationList');
   const [sortOption, setSortOption] = useState<SortOption>('created-asc');
+  const [tagMode, setTagMode] = useState<'all' | 'exclude-ocr' | 'only-ocr'>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const locale = t('locale') || 'en';
@@ -118,6 +122,13 @@ export function AnnotationList({
         return sorted;
     }
   }, [annotations, sortOption]);
+
+  // タグ絞り込み（OCR除外 / OCRのみ）。表示のみに作用し、選択操作は全件対象のまま。
+  const visibleAnnotations = useMemo(() => {
+    if (tagMode === 'all') return sortedAnnotations;
+    const hasOcr = (a: AnnotationWithMultipleBodies) => (a.tags || []).includes('OCR');
+    return sortedAnnotations.filter((a) => (tagMode === 'exclude-ocr' ? !hasOcr(a) : hasOcr(a)));
+  }, [sortedAnnotations, tagMode]);
 
   const toggleSelection = (id: string) => {
     const newSelected = new Set(selectedIds);
@@ -224,15 +235,29 @@ export function AnnotationList({
                 <option value="text-asc">{t('sortTextAsc')}</option>
                 <option value="text-desc">{t('sortTextDesc')}</option>
               </select>
+              <select
+                value={tagMode}
+                onChange={(e) => setTagMode(e.target.value as typeof tagMode)}
+                title={t('tagFilter')}
+                className="text-xs px-2 py-1 rounded border border-[var(--ds-border)]
+                  bg-[var(--ds-bg)] text-[var(--ds-fg)]
+                  hover:bg-[var(--ds-surface-2)] cursor-pointer
+                  focus:outline-none focus:ring-2 focus:ring-[var(--ds-ring)]"
+              >
+                <option value="all">{t('tagAll')}</option>
+                <option value="exclude-ocr">{t('tagExcludeOcr')}</option>
+                <option value="only-ocr">{t('tagOnlyOcr')}</option>
+              </select>
             </div>
           </div>
         )}
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0">
-        {sortedAnnotations.map((annotation) => {
+        {visibleAnnotations.map((annotation) => {
           const text = getAnnotationText(annotation);
           const metadataFields = getMetadataFields(annotation);
+          const tags = getTags(annotation);
           const createdAgo = getTimeAgo(annotation.created, locale);
           const modifiedAgo = getTimeAgo(annotation.modified, locale);
           const isSelected = selectedIds.has(annotation.id);
@@ -281,6 +306,21 @@ export function AnnotationList({
                 ) : (
                   <div className="text-sm sm:text-base text-[var(--ds-fg-muted)] italic">
                     {t('emptyText')}
+                  </div>
+                )}
+                {tags.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {tags.map((tag, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center px-1.5 py-0.5
+                          rounded text-[11px] leading-tight font-medium
+                          bg-[var(--ds-primary)] text-white"
+                        title={tag}
+                      >
+                        {tag}
+                      </span>
+                    ))}
                   </div>
                 )}
                 {metadataFields.length > 0 && (
