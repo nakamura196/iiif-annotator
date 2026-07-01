@@ -299,7 +299,7 @@ export default function MyAnnotationsPage() {
             {summary.map((m) => (
               <button key={m.manifestId} onClick={() => openManifest(m)} className="block w-full text-left">
                 <Card className="hover:shadow-lg transition-shadow">
-                  <CardContent className="px-5 py-4 flex items-center gap-4">
+                  <CardContent className="px-5 pt-4 pb-4 flex items-center gap-4">
                     <BookOpen className="h-5 w-5 text-[var(--ds-primary)] flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-[var(--ds-fg)] truncate" title={manifestLabel(m.manifestId)}>
@@ -325,7 +325,7 @@ export default function MyAnnotationsPage() {
             .map((c) => (
               <button key={c.canvasId} onClick={() => openCanvas(selManifest, c.canvasId)} className="block w-full text-left">
                 <Card className="hover:shadow-lg transition-shadow">
-                  <CardContent className="px-5 py-4 flex items-center gap-4">
+                  <CardContent className="px-5 pt-4 pb-4 flex items-center gap-4">
                     <ImageIcon className="h-5 w-5 text-[var(--ds-primary)] flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-[var(--ds-fg)] truncate" title={c.canvasId}>
@@ -393,7 +393,7 @@ export default function MyAnnotationsPage() {
                   {filtered.map((a) => (
                     <Link key={a.id} href={getItemLink(a.manifestId, a.canvasId)} className="block">
                       <Card className="hover:shadow-lg transition-shadow">
-                        <CardContent className="px-6 pt-5 pb-6">
+                        <CardContent className="px-6 pt-5 pb-5">
                           <div className="flex items-start justify-between gap-4 mb-3">
                             <p className="font-medium text-[var(--ds-fg)] line-clamp-2 flex-1">
                               {getAnnotationText(a) || t("noText")}
