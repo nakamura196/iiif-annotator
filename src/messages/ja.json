@@ -246,7 +246,14 @@
     "searchResults": "{count}件の結果が見つかりました",
     "noAnnotations": "まだアノテーションを作成していません",
     "noSearchResults": "検索条件に一致するアノテーションがありません",
-    "noText": "テキストなし"
+    "noText": "テキストなし",
+    "manifests": "マニフェスト",
+    "canvases": "コマ",
+    "backToManifests": "マニフェスト一覧へ",
+    "backToCanvases": "コマ一覧へ",
+    "canvasCount": "{count}コマ",
+    "annotationCount": "{count}件",
+    "openInEditor": "エディタで開く"
   },
   "Changelog": {
     "title": "更新履歴",

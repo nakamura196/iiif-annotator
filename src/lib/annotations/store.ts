@@ -324,6 +324,48 @@ export async function listAllUserAnnotations(userId: string): Promise<Serialized
   });
 }
 
+export interface CanvasSummary {
+  canvasId: string;
+  count: number;
+}
+export interface ManifestSummary {
+  manifestId: string;
+  total: number;
+  canvases: CanvasSummary[];
+}
+
+/**
+ * 指定ユーザのアノテーションを manifest×canvas の「件数だけ」で集計して返す（本文なし）。
+ * my-annotations の階層一覧の概要用。read はシャード数だけ、payload は極小。
+ */
+export async function summarizeUserAnnotations(userId: string): Promise<ManifestSummary[]> {
+  const db = getAdminFirestore();
+  const snapshot = await db.collection(COLLECTION).where('userId', '==', userId).get();
+
+  // manifestId -> (canvasId -> count)
+  const byManifest = new Map<string, Map<string, number>>();
+  for (const doc of snapshot.docs) {
+    const data = doc.data() as FirebaseFirestore.DocumentData;
+    const n = itemsOf(data).length;
+    if (n === 0) continue;
+    const m = (data.manifestId as string) || '(unknown)';
+    const c = (data.canvasId as string) || '(unknown)';
+    if (!byManifest.has(m)) byManifest.set(m, new Map());
+    const cm = byManifest.get(m)!;
+    cm.set(c, (cm.get(c) || 0) + n);
+  }
+
+  const result: ManifestSummary[] = [];
+  for (const [manifestId, cm] of byManifest) {
+    const canvases = [...cm.entries()].map(([canvasId, count]) => ({ canvasId, count }));
+    const total = canvases.reduce((s, c) => s + c.count, 0);
+    result.push({ manifestId, total, canvases });
+  }
+  // 件数の多い manifest を先頭に
+  result.sort((a, b) => b.total - a.total);
+  return result;
+}
+
 /** 指定ユーザの、指定 manifest 群に紐づくアノテーションを manifest ごとにまとめて返す。 */
 export async function listAnnotationsByManifests(
   userId: string,

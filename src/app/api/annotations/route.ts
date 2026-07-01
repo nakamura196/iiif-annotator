@@ -6,6 +6,7 @@ import {
   listAnnotationsByManifests,
   listCanvasAnnotations,
   listAllUserAnnotations,
+  summarizeUserAnnotations,
   type AnnotationsByManifest,
   type SerializedAnnotation,
 } from '@/lib/annotations/store';
@@ -71,6 +72,18 @@ export async function GET(request: NextRequest) {
   const format = request.nextUrl.searchParams.get('format');
   const canvasId = request.nextUrl.searchParams.get('canvasId');
   const mine = request.nextUrl.searchParams.get('mine');
+  const summary = request.nextUrl.searchParams.get('summary');
+
+  // summary=1: manifest×canvas の件数だけを返す（my-annotations の階層概要用。本文なし＝極小）。
+  if (summary) {
+    try {
+      const manifests = await summarizeUserAnnotations(userId);
+      return NextResponse.json({ userId, manifests });
+    } catch (error) {
+      console.error('Error summarizing annotations:', error);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+  }
 
   // mine=1: 認証ユーザの全アノテーションを平坦なリストで返す（my-annotations 用）。
   // read はシャード数だけで、旧来の「1件=1read で全件」より桁違いに軽い。
