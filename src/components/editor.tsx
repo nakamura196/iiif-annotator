@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import type {
   AnnotoriousOpenSeadragonAnnotator,
   ImageAnnotation,
@@ -39,7 +39,7 @@ import { convertPresentation2 } from "@iiif/parser/presentation-2";
 import { Canvas } from "@iiif/presentation-3";
 import { Export } from "@/components/export";
 import { ManifestViewer } from "@/components/ManifestViewer";
-import { ScanText, ChevronLeft, ChevronRight, LayoutGrid, MessageSquareText } from "lucide-react";
+import { ScanText, ChevronLeft, ChevronRight, LayoutGrid, MessageSquareText, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { ThumbnailPanel } from "@/components/annotation/ThumbnailPanel";
@@ -80,6 +80,10 @@ function App() {
   const [canvases, setCanvases] = useState<Canvas[]>([]);
 
   const [results, setResults] = useState<Annotation[]>([]);
+  // 密なコマ（1000件超）で描画がフリーズしないよう、分割描画中はローディング表示を出す。
+  const [annotationsLoading, setAnnotationsLoading] = useState(false);
+  // 分割描画の世代トークン。新しい描画が始まったら古い rAF ループを止める。
+  const renderTokenRef = useRef(0);
 
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<
     string | null
@@ -275,31 +279,16 @@ function App() {
 
     const pageAdapter = new FirestoreAnnotationAdapter(canvasId, manifestUrl);
 
-    pageAdapter.all().then((result) => {
-      setResults(result.items as Annotation[]);
-
-      // アノテーションを変換して設定
-      try {
-        const annotoriousAnnotations = convertMultipleAnnotations(
-          result.items as AnnotationWidthSingleBody[]
-        );
-
-        // 常に前ページのオーバーレイを消してから追加する。0 件の canvas に移った時に
-        // clear をスキップすると前ページの図形が残り、それを編集すると別 canvas に誤複製される。
-        anno.clearAnnotations();
-
-        // Try to add each annotation individually（個別失敗はスキップ）
-        for (const annotation of annotoriousAnnotations) {
-          try {
-            anno.addAnnotation(annotation);
-          } catch {
-            // Skip fallback - annotation ID already exists
-          }
-        }
-      } catch {
-        // Failed to set annotations
-      }
-    });
+    // 取得中〜描画完了までローディング表示。描画は renderItemsToCanvas が
+    // 分割（rAF）で行い、常に前ページのオーバーレイを clear してから追加する。
+    setAnnotationsLoading(true);
+    pageAdapter
+      .all()
+      .then((result) => {
+        setResults(result.items as Annotation[]);
+        renderItemsToCanvas(result.items as Annotation[]);
+      })
+      .catch(() => setAnnotationsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anno, currentPage, user]);
 
@@ -308,19 +297,42 @@ function App() {
   const renderItemsToCanvas = useCallback(
     (items: Annotation[]) => {
       if (!anno) return;
+      // 世代トークンを進める。以前の描画ループが走っていれば次の step で自動停止する。
+      const token = ++renderTokenRef.current;
+      let converted: ReturnType<typeof convertMultipleAnnotations>;
       try {
-        const converted = convertMultipleAnnotations(items as AnnotationWidthSingleBody[]);
-        anno.clearAnnotations();
-        for (const a of converted) {
+        converted = convertMultipleAnnotations(items as AnnotationWidthSingleBody[]);
+      } catch {
+        setAnnotationsLoading(false);
+        return;
+      }
+      anno.clearAnnotations();
+      if (converted.length === 0) {
+        setAnnotationsLoading(false);
+        return;
+      }
+      // 件数が多いと addAnnotation の同期ループでメインスレッドが固まる。
+      // requestAnimationFrame で数十件ずつに分けて追加し、UI をブロックしない。
+      setAnnotationsLoading(true);
+      const CHUNK = 80;
+      let i = 0;
+      const step = () => {
+        if (token !== renderTokenRef.current) return; // 新しい描画が始まったら中断
+        const end = Math.min(i + CHUNK, converted.length);
+        for (; i < end; i++) {
           try {
-            anno.addAnnotation(a);
+            anno.addAnnotation(converted[i]);
           } catch {
             /* 個別の追加失敗はスキップ */
           }
         }
-      } catch {
-        /* noop */
-      }
+        if (i < converted.length) {
+          requestAnimationFrame(step);
+        } else {
+          setAnnotationsLoading(false);
+        }
+      };
+      requestAnimationFrame(step);
     },
     [anno]
   );
@@ -334,6 +346,20 @@ function App() {
     setResults(result.items as Annotation[]);
     renderItemsToCanvas(result.items as Annotation[]);
   }, [adapter, renderItemsToCanvas]);
+
+  // 差分反映用: 1 件だけキャンバスへ追加（全再描画を避ける）。
+  const addOneToCanvas = useCallback(
+    (item: Annotation) => {
+      if (!anno) return;
+      try {
+        const [conv] = convertMultipleAnnotations([item] as AnnotationWidthSingleBody[]);
+        if (conv) anno.addAnnotation(conv);
+      } catch {
+        /* noop */
+      }
+    },
+    [anno]
+  );
 
   // Update URL when page changes
   const updateURLWithPage = useCallback((page: number) => {
@@ -383,11 +409,18 @@ function App() {
           await adapter.delete(id);
         }
       }
-      // サーバの状態で results / canvas を再同期（削除済みは返らない）
-      await reloadAnnotations();
+      // 差分反映: 全再描画せず、削除分だけキャンバス/リストから除く（密なコマでも軽い）。
+      for (const id of ids) {
+        try {
+          anno?.removeAnnotation(id);
+        } catch {
+          /* noop */
+        }
+      }
+      setResults((prev) => prev.filter((r) => !ids.includes(r.id)));
       toast.success(ids.length === 1 ? "アノテーションを削除しました" : `${ids.length} 件削除しました`);
     } catch (e) {
-      // 失敗は握り潰さずユーザーに通知し、サーバの正で UI を復元する
+      // 失敗は握り潰さずユーザーに通知し、サーバの正で UI を復元する（安全側は全再同期）
       toast.error(`削除に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
       await reloadAnnotations();
     }
@@ -546,13 +579,30 @@ function App() {
 
     try {
       if (ex) {
-        await adapter?.update(iiifAnnotation);
+        const resp = await adapter?.update(iiifAnnotation);
+        const updated = resp?.annotation;
+        // 差分反映: リストの該当 1 件だけ差し替え（キャンバスは updateAnnotation で反映済み）。
+        if (updated) {
+          const normalized = FirestoreAnnotationAdapter.normalize(updated) as Annotation;
+          setResults((prev) => prev.map((r) => (r.id === updated.id ? normalized : r)));
+        }
+        toast.success("アノテーションを更新しました");
       } else {
-        await adapter?.create(iiifAnnotation);
+        const resp = await adapter?.create(iiifAnnotation);
+        const created = resp?.annotation;
+        // 差分反映: 一時 id の図形を消し、サーバ採番 id の 1 件だけ足す（全再描画しない）。
+        if (created) {
+          const normalized = FirestoreAnnotationAdapter.normalize(created) as Annotation;
+          try {
+            anno?.removeAnnotation(updatedAnnotation.id);
+          } catch {
+            /* noop */
+          }
+          addOneToCanvas(normalized);
+          setResults((prev) => [...prev, normalized]);
+        }
+        toast.success("アノテーションを追加しました");
       }
-      // 作成後はサーバ採番の id に揃える必要があるため、必ず再取得して同期する
-      await reloadAnnotations();
-      toast.success(ex ? "アノテーションを更新しました" : "アノテーションを追加しました");
     } catch (e) {
       toast.error(`保存に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
       await reloadAnnotations();
@@ -791,8 +841,18 @@ function App() {
 
   const centerContent = (
     <div className="h-full min-h-0 flex flex-col">
-        <div className="flex-1 min-h-0 flex flex-col">
+        <div className="relative flex-1 min-h-0 flex flex-col">
           <Viewer tool={tool} options={viewerOptions} />
+          {annotationsLoading && (
+            <div
+              className="absolute top-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2
+                px-3 py-1.5 rounded-full text-sm shadow
+                bg-[var(--ds-surface)] text-[var(--ds-fg)] border border-[var(--ds-border)]"
+            >
+              <Loader2 className="h-4 w-4 animate-spin text-[var(--ds-primary)]" />
+              <span>アノテーション読み込み中… {results.length > 0 ? `(${results.length}件)` : ""}</span>
+            </div>
+          )}
         </div>
         <ThumbnailPanel
           canvases={canvases}

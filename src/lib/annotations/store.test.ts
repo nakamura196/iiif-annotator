@@ -212,6 +212,38 @@ describe('listAnnotationsByManifests', () => {
   });
 });
 
+describe('sharding（大量アノテーション＝1215件コマ相当）', () => {
+  it('ソフト上限を超えると複数シャードに分割し、2シャード目でも表示・更新・削除できる', async () => {
+    // 1 件 ~60KB の body。十数件でソフト上限(700KB)を超え 2 シャード以上になる。
+    const bigBody = { type: 'TextualBody', value: 'x'.repeat(60000) };
+    const created = [];
+    for (let i = 0; i < 15; i++) {
+      created.push(await createAnnotation('u-big', { ...baseInput, body: bigBody }));
+    }
+
+    // 2 シャード以上に分割されている
+    expect(collections['annotationPages'].size).toBeGreaterThanOrEqual(2);
+
+    // 全件を跨いで読み出せる（欠落なし）
+    const all = await listCanvasAnnotations('u-big', baseInput.manifestId, baseInput.canvasId);
+    expect(all).toHaveLength(15);
+
+    // 2 シャード目(_1:)の item を更新・削除できる
+    const second = created.find((c) => c.id.includes('_1:'));
+    expect(second).toBeTruthy();
+
+    const upd = await updateAnnotation('u-big', second!.id, {
+      body: { type: 'TextualBody', value: 'edited-in-shard-1' },
+    });
+    expect((upd.body as { value: string }).value).toBe('edited-in-shard-1');
+
+    await deleteAnnotation('u-big', second!.id);
+    const after = await listCanvasAnnotations('u-big', baseInput.manifestId, baseInput.canvasId);
+    expect(after).toHaveLength(14);
+    expect(after.find((a) => a.id === second!.id)).toBeUndefined();
+  });
+});
+
 describe('listAllUserAnnotations', () => {
   it('ユーザの全 (manifest, canvas) を跨いで全 item を返す', async () => {
     await createAnnotation('user-1', baseInput);
