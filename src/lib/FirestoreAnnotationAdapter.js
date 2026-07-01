@@ -53,11 +53,10 @@ export default class FirestoreAnnotationAdapter {
     };
   }
 
-  /** GET /api/annotations?manifestIds=... → 自 manifest 分の items を取り出す。 */
-  async fetchManifestItems() {
+  /** GET から自 manifest 分の items を取り出す共通処理。 */
+  async fetchItems(url) {
     const headers = await this.authHeaders();
     if (!headers) return [];
-    const url = `/api/annotations?manifestIds=${encodeURIComponent(this.manifestId)}`;
     const res = await fetch(url, { headers });
     if (!res.ok) {
       throw new Error(`アノテーションの取得に失敗しました (${res.status})`);
@@ -65,6 +64,19 @@ export default class FirestoreAnnotationAdapter {
     const data = await res.json();
     const group = (data.annotations || []).find((g) => g.manifestId === this.manifestId);
     return (group?.items || []).map(FirestoreAnnotationAdapter.normalize);
+  }
+
+  /** この canvas のアノテーションだけを取得（サーバはページ 1 ドキュメント = 1 read）。 */
+  async fetchCanvasItems() {
+    const url =
+      `/api/annotations?manifestIds=${encodeURIComponent(this.manifestId)}` +
+      `&canvasId=${encodeURIComponent(this.canvasId)}`;
+    return this.fetchItems(url);
+  }
+
+  /** manifest 全体（全 canvas）のアノテーションを取得。export 用。 */
+  async fetchManifestItems() {
+    return this.fetchItems(`/api/annotations?manifestIds=${encodeURIComponent(this.manifestId)}`);
   }
 
   /** 失敗レスポンスからメッセージを取り出す。 */
@@ -104,7 +116,9 @@ export default class FirestoreAnnotationAdapter {
     if (!res.ok) {
       throw new Error(await FirestoreAnnotationAdapter.errorMessage(res, "作成に失敗しました"));
     }
-    return this.all();
+    // 再取得は呼び出し側（editor の reloadAnnotations）で 1 回だけ行う。ここでは
+    // this.all() を呼ばず、二重フェッチによる無駄な読み取りを避ける。
+    return res.json();
   }
 
   /** */
@@ -134,7 +148,7 @@ export default class FirestoreAnnotationAdapter {
     if (!res.ok) {
       throw new Error(await FirestoreAnnotationAdapter.errorMessage(res, "更新に失敗しました"));
     }
-    return this.all();
+    return res.json();
   }
 
   /** */
@@ -151,7 +165,7 @@ export default class FirestoreAnnotationAdapter {
     if (!res.ok) {
       throw new Error(await FirestoreAnnotationAdapter.errorMessage(res, "削除に失敗しました"));
     }
-    return this.all();
+    return res.json();
   }
 
   /** */
@@ -167,11 +181,9 @@ export default class FirestoreAnnotationAdapter {
     return data.annotation ? FirestoreAnnotationAdapter.normalize(data.annotation) : null;
   }
 
-  /** Returns an AnnotationPage with this canvas' annotations */
+  /** Returns an AnnotationPage with this canvas' annotations（canvas 単位で 1 read）。 */
   async all() {
-    const items = (await this.fetchManifestItems()).filter(
-      (item) => item.canvasId === this.canvasId
-    );
+    const items = await this.fetchCanvasItems();
     return {
       id: this.annotationPageId,
       items,

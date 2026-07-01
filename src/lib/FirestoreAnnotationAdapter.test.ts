@@ -31,13 +31,9 @@ beforeEach(() => {
 });
 
 describe('FirestoreAnnotationAdapter (API 経由)', () => {
-  it('all() は ID トークンを付けて GET し、canvas で絞り込む', async () => {
-    fetchMock.mockResolvedValueOnce(
-      allResponse([
-        { id: 'a1', canvasId: CANVAS, body: { value: 'x' } },
-        { id: 'a2', canvasId: 'other', body: { value: 'y' } },
-      ])
-    );
+  it('all() は ID トークンを付けて canvas スコープで GET する（サーバが canvas 単位に絞る）', async () => {
+    // サーバは canvasId 指定でその canvas のシャードだけを返す（= 数 read）。
+    fetchMock.mockResolvedValueOnce(allResponse([{ id: 'a1', canvasId: CANVAS, body: { value: 'x' } }]));
     const adapter = new FirestoreAnnotationAdapter(CANVAS, MANIFEST);
     const page = await adapter.all();
 
@@ -46,50 +42,48 @@ describe('FirestoreAnnotationAdapter (API 経由)', () => {
 
     const [url, opts] = fetchMock.mock.calls[0];
     expect(url).toContain('/api/annotations?manifestIds=');
+    expect(url).toContain(`canvasId=${encodeURIComponent(CANVAS)}`);
     expect(opts.headers.Authorization).toBe('Bearer tok-123');
   });
 
-  it('create() は POST し、その後 all() を返す', async () => {
-    fetchMock
-      .mockResolvedValueOnce(res(201, { annotation: { id: 'new-1' } })) // POST
-      .mockResolvedValueOnce(allResponse([{ id: 'new-1', canvasId: CANVAS }])); // all()
+  it('create() は POST のみ行い（二重フェッチしない）、レスポンスを返す', async () => {
+    fetchMock.mockResolvedValueOnce(res(201, { annotation: { id: 'new-1' } })); // POST のみ
 
     const adapter = new FirestoreAnnotationAdapter(CANVAS, MANIFEST);
-    const page = await adapter.create({
+    const result = await adapter.create({
       motivation: 'commenting',
       type: 'Annotation',
       body: { type: 'TextualBody', value: 'hi' },
       target: { selector: { type: 'FragmentSelector', value: 'xywh=0,0,1,1' } },
     });
 
+    // 再取得は呼び出し側が 1 回だけ行う設計。ここでは POST の 1 回だけ。
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     const [, postOpts] = fetchMock.mock.calls[0];
     expect(postOpts.method).toBe('POST');
     const sent = JSON.parse(postOpts.body);
     expect(sent.manifestId).toBe(MANIFEST);
     expect(sent.canvasId).toBe(CANVAS);
-    expect(page).not.toBeNull();
-    expect(page!.items[0].id).toBe('new-1');
+    expect(result.annotation.id).toBe('new-1');
   });
 
-  it('update() は PUT /api/annotations/:id を呼ぶ', async () => {
-    fetchMock
-      .mockResolvedValueOnce(res(200, { annotation: { id: 'a1' } }))
-      .mockResolvedValueOnce(allResponse([]));
+  it('update() は PUT /api/annotations/:id を 1 回だけ呼ぶ', async () => {
+    fetchMock.mockResolvedValueOnce(res(200, { annotation: { id: 'a1' } }));
     const adapter = new FirestoreAnnotationAdapter(CANVAS, MANIFEST);
     await adapter.update({ id: 'a1', body: { type: 'TextualBody', value: 'edited' } });
 
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, opts] = fetchMock.mock.calls[0];
     expect(url).toBe(`/api/annotations/${encodeURIComponent('a1')}`);
     expect(opts.method).toBe('PUT');
   });
 
-  it('delete() は DELETE /api/annotations/:id を呼ぶ', async () => {
-    fetchMock
-      .mockResolvedValueOnce(res(200, { success: true }))
-      .mockResolvedValueOnce(allResponse([]));
+  it('delete() は DELETE /api/annotations/:id を 1 回だけ呼ぶ', async () => {
+    fetchMock.mockResolvedValueOnce(res(200, { success: true }));
     const adapter = new FirestoreAnnotationAdapter(CANVAS, MANIFEST);
     await adapter.delete('a1');
 
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, opts] = fetchMock.mock.calls[0];
     expect(url).toBe(`/api/annotations/${encodeURIComponent('a1')}`);
     expect(opts.method).toBe('DELETE');
