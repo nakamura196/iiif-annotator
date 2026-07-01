@@ -247,7 +247,14 @@
     "searchResults": "Found {count} result(s)",
     "noAnnotations": "You haven't created any annotations yet",
     "noSearchResults": "No annotations match your search",
-    "noText": "No text content"
+    "noText": "No text content",
+    "manifests": "Manifests",
+    "canvases": "Canvases",
+    "backToManifests": "Back to manifests",
+    "backToCanvases": "Back to canvases",
+    "canvasCount": "{count} canvas(es)",
+    "annotationCount": "{count} annotation(s)",
+    "openInEditor": "Open in editor"
   },
   "Changelog": {
     "title": "Changelog",

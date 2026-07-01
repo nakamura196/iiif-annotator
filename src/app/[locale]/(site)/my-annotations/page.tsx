@@ -7,80 +7,89 @@ import { getIIIFLabel } from "@/lib/utils/iiifLabel";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Search, Calendar, FileText, ExternalLink } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  Calendar,
+  FileText,
+  ExternalLink,
+  ChevronRight,
+  BookOpen,
+  Image as ImageIcon,
+} from "lucide-react";
 import { type User } from "firebase/auth";
 
-interface FirestoreTimestamp {
-  seconds: number;
-  nanoseconds: number;
+interface CanvasSummary {
+  canvasId: string;
+  count: number;
+}
+interface ManifestSummary {
+  manifestId: string;
+  total: number;
+  canvases: CanvasSummary[];
 }
 
 interface AnnotationBody {
   value?: string;
   [key: string]: unknown;
 }
-
 interface Annotation {
   id: string;
-  userId: string;
-  userName?: string;
   manifestId: string;
   canvasId: string;
-  created: FirestoreTimestamp | Date;
-  modified: FirestoreTimestamp | Date;
+  created: Date;
+  modified: Date;
   target: unknown;
   body: AnnotationBody | AnnotationBody[];
+}
+
+type View = "manifests" | "canvases" | "annotations";
+
+// canvasId(URL) を短く表示する。
+function shortCanvas(id: string): string {
+  try {
+    const u = new URL(id);
+    const segs = u.pathname.split("/").filter(Boolean);
+    return segs.slice(-2).join("/") || id;
+  } catch {
+    return id;
+  }
 }
 
 export default function MyAnnotationsPage() {
   const t = useTranslations("MyAnnotations");
   const locale = useLocale();
+
   const [user, setUser] = useState<User | null>(null);
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  // manifestId(URL) → 表示用ラベルのキャッシュ。
-  // アノテーションには manifestId(URL) しか保存されていないため、
-  // ユニークなマニフェストを 1 回ずつ取得して label を解決する。
-  const [manifestLabels, setManifestLabels] = useState<Record<string, string>>({});
-  const [filteredAnnotations, setFilteredAnnotations] = useState<Annotation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // アノテーションは API 経由で取得する（書き込みと同じ API ファースト経路）。
-  // サーバは新モデル annotationPages を userId で引き、シャードの items を平坦化して返すため、
-  // read はシャード数だけ（旧来のクライアント直読み＝1件1read で全件、より桁違いに軽い）。
-  const loadAnnotations = async (currentUser: User) => {
+  const [summary, setSummary] = useState<ManifestSummary[]>([]);
+  const [manifestLabels, setManifestLabels] = useState<Record<string, string>>({});
+
+  const [view, setView] = useState<View>("manifests");
+  const [selManifest, setSelManifest] = useState<ManifestSummary | null>(null);
+  const [selCanvas, setSelCanvas] = useState<string | null>(null);
+  const [canvasLabels, setCanvasLabels] = useState<Record<string, string>>({});
+
+  const [canvasAnnos, setCanvasAnnos] = useState<Annotation[]>([]);
+  const [annoLoading, setAnnoLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // 概要（manifest×canvas の件数だけ）を取得する。read はシャード数だけで payload は極小。
+  const loadSummary = async (currentUser: User) => {
     try {
       setLoading(true);
       setError(null);
-
       const token = await currentUser.getIdToken();
-      const res = await fetch("/api/annotations?mine=1", {
+      const res = await fetch("/api/annotations?summary=1", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) {
-        throw new Error(`load failed (${res.status})`);
-      }
+      if (!res.ok) throw new Error(`load failed (${res.status})`);
       const data = await res.json();
-      // created/modified は ISO 文字列で返るので Date に正規化する。
-      const loaded: Annotation[] = (data.items || []).map(
-        (it: { created?: string; modified?: string } & Record<string, unknown>) => ({
-          ...it,
-          created: it.created ? new Date(it.created) : new Date(0),
-          modified: it.modified ? new Date(it.modified) : new Date(0),
-        })
-      ) as Annotation[];
-
-      loaded.sort((a, b) => {
-        const at = a.modified instanceof Date ? a.modified.getTime() : 0;
-        const bt = b.modified instanceof Date ? b.modified.getTime() : 0;
-        return bt - at; // 新しい順
-      });
-
-      setAnnotations(loaded);
-      setFilteredAnnotations(loaded);
+      setSummary((data.manifests || []) as ManifestSummary[]);
     } catch (err) {
-      console.error("Error loading annotations:", err);
+      console.error("Error loading summary:", err);
       setError(t("loadError"));
     } finally {
       setLoading(false);
@@ -91,24 +100,17 @@ export default function MyAnnotationsPage() {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      if (currentUser) {
-        await loadAnnotations(currentUser);
-      } else {
-        setLoading(false);
-      }
+      if (currentUser) await loadSummary(currentUser);
+      else setLoading(false);
     });
-
     return () => unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ユニークな manifestId のラベルをまとめて取得する。
+  // manifest ラベルをまとめて取得。
   useEffect(() => {
-    const ids = Array.from(
-      new Set(annotations.map((a) => a.manifestId).filter(Boolean))
-    );
+    const ids = summary.map((m) => m.manifestId).filter(Boolean);
     if (ids.length === 0) return;
-
     let cancelled = false;
     (async () => {
       const entries = await Promise.all(
@@ -116,7 +118,6 @@ export default function MyAnnotationsPage() {
           try {
             const res = await fetch(id);
             const manifest = await res.json();
-            // v2/v3 どちらの label でも getIIIFLabel が解決する
             return [id, getIIIFLabel(manifest.label, locale)];
           } catch {
             return [id, ""];
@@ -125,62 +126,85 @@ export default function MyAnnotationsPage() {
       );
       if (!cancelled) setManifestLabels(Object.fromEntries(entries));
     })();
-
     return () => {
       cancelled = true;
     };
-  }, [annotations, locale]);
+  }, [summary, locale]);
 
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setFilteredAnnotations(annotations);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = annotations.filter((annotation) => {
-        const bodyText = getAnnotationText(annotation);
-        return bodyText.toLowerCase().includes(query);
-      });
-      setFilteredAnnotations(filtered);
+  // manifest を開く → canvas 一覧へ。canvas ラベルもマニフェストから取得（v2/v3両対応）。
+  const openManifest = async (m: ManifestSummary) => {
+    setSelManifest(m);
+    setView("canvases");
+    setCanvasLabels({});
+    try {
+      const res = await fetch(m.manifestId);
+      const manifest = await res.json();
+      const canvases = manifest.items || manifest.sequences?.[0]?.canvases || [];
+      const map: Record<string, string> = {};
+      for (const c of canvases) {
+        const cid = c.id || c["@id"];
+        if (cid) map[cid] = getIIIFLabel(c.label, locale);
+      }
+      setCanvasLabels(map);
+    } catch {
+      /* ラベルは任意。失敗時は canvasId を短縮表示 */
     }
-  }, [searchQuery, annotations]);
-
-
-  const getAnnotationText = (annotation: Annotation): string => {
-    if (!annotation.body) return "";
-
-    if (Array.isArray(annotation.body)) {
-      return annotation.body
-        .map((b) => b.value || "")
-        .join(" ");
-    }
-
-    return annotation.body.value || "";
   };
 
-  const formatDate = (timestamp: FirestoreTimestamp | Date): string => {
-    if (!timestamp) return "";
-
-    let date: Date;
-    if ('seconds' in timestamp) {
-      date = new Date(timestamp.seconds * 1000);
-    } else if (timestamp instanceof Date) {
-      date = timestamp;
-    } else {
-      return "";
+  // canvas を開く → その canvas のアノテーションを取得（canvas スコープ = 1〜数 read）。
+  const openCanvas = async (m: ManifestSummary, canvasId: string) => {
+    setSelCanvas(canvasId);
+    setView("annotations");
+    setSearchQuery("");
+    setCanvasAnnos([]);
+    if (!user) return;
+    try {
+      setAnnoLoading(true);
+      const token = await user.getIdToken();
+      const url =
+        `/api/annotations?manifestIds=${encodeURIComponent(m.manifestId)}` +
+        `&canvasId=${encodeURIComponent(canvasId)}`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error(`load failed (${res.status})`);
+      const data = await res.json();
+      const group = (data.annotations || []).find(
+        (g: { manifestId: string }) => g.manifestId === m.manifestId
+      );
+      const items = ((group?.items || []) as Array<
+        { created?: string; modified?: string } & Record<string, unknown>
+      >).map((it) => ({
+        ...it,
+        created: it.created ? new Date(it.created) : new Date(0),
+        modified: it.modified ? new Date(it.modified) : new Date(0),
+      })) as Annotation[];
+      items.sort((a, b) => b.modified.getTime() - a.modified.getTime());
+      setCanvasAnnos(items);
+    } catch (err) {
+      console.error("Error loading canvas annotations:", err);
+      setError(t("loadError"));
+    } finally {
+      setAnnoLoading(false);
     }
-
-    return date.toLocaleDateString() + " " + date.toLocaleTimeString();
   };
 
+  const getAnnotationText = (a: Annotation): string => {
+    if (!a.body) return "";
+    if (Array.isArray(a.body)) return a.body.map((b) => b.value || "").join(" ");
+    return a.body.value || "";
+  };
 
-  const getItemLink = (annotation: Annotation) => {
-    // Create link to the item page with the manifest and canvas
-    const params = new URLSearchParams({
-      manifest: annotation.manifestId,
-      canvas: annotation.canvasId,
-    });
+  const formatDate = (d: Date): string =>
+    d instanceof Date && d.getTime() > 0
+      ? d.toLocaleDateString() + " " + d.toLocaleTimeString()
+      : "";
+
+  const getItemLink = (manifestId: string, canvasId: string) => {
+    const params = new URLSearchParams({ manifest: manifestId, canvas: canvasId });
     return `/item?${params.toString()}`;
   };
+
+  const manifestLabel = (id: string) => manifestLabels[id] || id;
+  const totalAnnotations = summary.reduce((s, m) => s + m.total, 0);
 
   if (loading) {
     return (
@@ -213,84 +237,182 @@ export default function MyAnnotationsPage() {
     );
   }
 
+  // パンくず
+  const breadcrumb = (
+    <nav className="flex items-center flex-wrap gap-1 text-sm mb-6 text-[var(--ds-fg-muted)]">
+      <button
+        onClick={() => {
+          setView("manifests");
+          setSelManifest(null);
+          setSelCanvas(null);
+        }}
+        className={`hover:text-[var(--ds-fg)] ${view === "manifests" ? "text-[var(--ds-fg)] font-medium" : ""}`}
+      >
+        {t("manifests")}
+      </button>
+      {selManifest && (
+        <>
+          <ChevronRight className="h-4 w-4" />
+          <button
+            onClick={() => {
+              setView("canvases");
+              setSelCanvas(null);
+            }}
+            className={`hover:text-[var(--ds-fg)] truncate max-w-[16rem] ${view === "canvases" ? "text-[var(--ds-fg)] font-medium" : ""}`}
+            title={manifestLabel(selManifest.manifestId)}
+          >
+            {manifestLabel(selManifest.manifestId)}
+          </button>
+        </>
+      )}
+      {selManifest && selCanvas && view === "annotations" && (
+        <>
+          <ChevronRight className="h-4 w-4" />
+          <span className="text-[var(--ds-fg)] font-medium truncate max-w-[12rem]" title={selCanvas}>
+            {canvasLabels[selCanvas] || shortCanvas(selCanvas)}
+          </span>
+        </>
+      )}
+    </nav>
+  );
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2 text-[var(--ds-fg)]">
-          {t("title")}
-        </h1>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-2 text-[var(--ds-fg)]">{t("title")}</h1>
         <p className="text-[var(--ds-fg-muted)]">
-          {t("description", { count: annotations.length })}
+          {t("description", { count: totalAnnotations })}
         </p>
       </div>
 
-      {/* Search Box */}
-      <div className="mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-[var(--ds-fg-muted)]" />
-          <input
-            type="text"
-            placeholder={t("searchPlaceholder")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-[var(--ds-border)]
-              rounded-md bg-[var(--ds-bg)] text-[var(--ds-fg)]
-              focus:outline-none focus:ring-2 focus:ring-[var(--ds-ring)]"
-          />
-        </div>
-        {searchQuery && (
-          <p className="mt-2 text-sm text-[var(--ds-fg-muted)]">
-            {t("searchResults", { count: filteredAnnotations.length })}
-          </p>
-        )}
-      </div>
+      {breadcrumb}
 
-      {/* Annotations List */}
-      {filteredAnnotations.length === 0 ? (
-        <div className="text-center py-12">
-          <FileText className="h-12 w-12 mx-auto mb-4 text-[var(--ds-fg-muted)]" />
-          <p className="text-[var(--ds-fg-muted)]">
-            {searchQuery ? t("noSearchResults") : t("noAnnotations")}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredAnnotations.map((annotation) => {
-            const text = getAnnotationText(annotation);
-
-            return (
-              <Link
-                key={annotation.id}
-                href={getItemLink(annotation)}
-                className="block"
-              >
+      {/* ---- Level 1: manifests ---- */}
+      {view === "manifests" &&
+        (summary.length === 0 ? (
+          <div className="text-center py-12">
+            <FileText className="h-12 w-12 mx-auto mb-4 text-[var(--ds-fg-muted)]" />
+            <p className="text-[var(--ds-fg-muted)]">{t("noAnnotations")}</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {summary.map((m) => (
+              <button key={m.manifestId} onClick={() => openManifest(m)} className="block w-full text-left">
                 <Card className="hover:shadow-lg transition-shadow">
-                  <CardContent className="px-6 pt-5 pb-6">
-                    <div className="flex items-start justify-between gap-4 mb-3">
-                      <p className="font-medium text-[var(--ds-fg)] line-clamp-2 flex-1">
-                        {text || t("noText")}
+                  <CardContent className="px-5 py-4 flex items-center gap-4">
+                    <BookOpen className="h-5 w-5 text-[var(--ds-primary)] flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-[var(--ds-fg)] truncate" title={manifestLabel(m.manifestId)}>
+                        {manifestLabel(m.manifestId)}
                       </p>
-                      <ExternalLink className="h-4 w-4 text-[var(--ds-fg-muted)] flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-[var(--ds-fg-muted)]">
+                        {t("annotationCount", { count: m.total })} ・ {t("canvasCount", { count: m.canvases.length })}
+                      </p>
                     </div>
-
-                    <div className="space-y-2 text-sm text-[var(--ds-fg-muted)]">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 flex-shrink-0" />
-                        <span>{formatDate(annotation.modified)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate" title={annotation.manifestId}>
-                          {manifestLabels[annotation.manifestId] || annotation.manifestId}
-                        </span>
-                      </div>
-                    </div>
+                    <ChevronRight className="h-5 w-5 text-[var(--ds-fg-muted)] flex-shrink-0" />
                   </CardContent>
                 </Card>
-              </Link>
-            );
-          })}
+              </button>
+            ))}
+          </div>
+        ))}
+
+      {/* ---- Level 2: canvases ---- */}
+      {view === "canvases" && selManifest && (
+        <div className="space-y-3">
+          {[...selManifest.canvases]
+            .sort((a, b) => b.count - a.count)
+            .map((c) => (
+              <button key={c.canvasId} onClick={() => openCanvas(selManifest, c.canvasId)} className="block w-full text-left">
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardContent className="px-5 py-4 flex items-center gap-4">
+                    <ImageIcon className="h-5 w-5 text-[var(--ds-primary)] flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-[var(--ds-fg)] truncate" title={c.canvasId}>
+                        {canvasLabels[c.canvasId] || shortCanvas(c.canvasId)}
+                      </p>
+                      <p className="text-sm text-[var(--ds-fg-muted)]">
+                        {t("annotationCount", { count: c.count })}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-[var(--ds-fg-muted)] flex-shrink-0" />
+                  </CardContent>
+                </Card>
+              </button>
+            ))}
         </div>
+      )}
+
+      {/* ---- Level 3: annotations ---- */}
+      {view === "annotations" && selManifest && selCanvas && (
+        <>
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--ds-fg-muted)]" />
+              <input
+                type="text"
+                placeholder={t("searchPlaceholder")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-[var(--ds-border)] rounded-md
+                  bg-[var(--ds-bg)] text-[var(--ds-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-ring)]"
+              />
+            </div>
+            <Link
+              href={getItemLink(selManifest.manifestId, selCanvas)}
+              className="inline-flex items-center gap-1 px-3 py-2 text-sm rounded-md
+                bg-[var(--ds-primary)] text-white hover:opacity-90 transition-opacity flex-shrink-0"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {t("openInEditor")}
+            </Link>
+          </div>
+
+          {annoLoading ? (
+            <div className="text-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto text-[var(--ds-primary)]" />
+            </div>
+          ) : (
+            (() => {
+              const q = searchQuery.trim().toLowerCase();
+              const filtered = q
+                ? canvasAnnos.filter((a) => getAnnotationText(a).toLowerCase().includes(q))
+                : canvasAnnos;
+              if (filtered.length === 0) {
+                return (
+                  <div className="text-center py-12">
+                    <FileText className="h-12 w-12 mx-auto mb-4 text-[var(--ds-fg-muted)]" />
+                    <p className="text-[var(--ds-fg-muted)]">
+                      {q ? t("noSearchResults") : t("noAnnotations")}
+                    </p>
+                  </div>
+                );
+              }
+              return (
+                <div className="space-y-4">
+                  {filtered.map((a) => (
+                    <Link key={a.id} href={getItemLink(a.manifestId, a.canvasId)} className="block">
+                      <Card className="hover:shadow-lg transition-shadow">
+                        <CardContent className="px-6 pt-5 pb-6">
+                          <div className="flex items-start justify-between gap-4 mb-3">
+                            <p className="font-medium text-[var(--ds-fg)] line-clamp-2 flex-1">
+                              {getAnnotationText(a) || t("noText")}
+                            </p>
+                            <ExternalLink className="h-4 w-4 text-[var(--ds-fg-muted)] flex-shrink-0 mt-0.5" />
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-[var(--ds-fg-muted)]">
+                            <Calendar className="h-4 w-4 flex-shrink-0" />
+                            <span>{formatDate(a.modified)}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              );
+            })()
+          )}
+        </>
       )}
     </div>
   );
