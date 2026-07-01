@@ -90,6 +90,28 @@ function App() {
   const [vocabularies, setVocabularies] = useState<Vocabulary[]>([]);
   const [selectedVocabId, setSelectedVocabId] = useState<string>("");
 
+  // メンテナンス（作業停止）状態。有効中は保存が 503 で弾かれるため、上部にバナーを出す。
+  // 1 分ごとに再取得し、移行完了で解除された後はリロード不要でバナーが消える。
+  const [maintenance, setMaintenance] = useState<{ enabled: boolean; message?: string }>({
+    enabled: false,
+  });
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      fetch("/api/system/maintenance")
+        .then((r) => r.json())
+        .then((s) => {
+          if (!cancelled) setMaintenance(s);
+        })
+        .catch(() => {});
+    load();
+    const iv = setInterval(load, 120000);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
+  }, []);
+
   const [isManifestViewerOpen, setIsManifestViewerOpen] = useState(false);
   const [isOCROpen, setIsOCROpen] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState<string>("");
@@ -262,28 +284,17 @@ function App() {
           result.items as AnnotationWidthSingleBody[]
         );
 
-        if (annotoriousAnnotations.length > 0) {
-          // Try setting annotations one by one to handle individual errors
-          const validAnnotations: ImageAnnotation[] = [];
-          const failedAnnotations: string[] = [];
-          
-          // First clear any existing annotations
-          anno.clearAnnotations();
-          
-          // Try to add each annotation individually
-          for (const annotation of annotoriousAnnotations) {
-            try {
-              anno.addAnnotation(annotation);
-              validAnnotations.push(annotation);
-            } catch {
-              failedAnnotations.push(annotation.id);
-              
-              // Skip fallback - annotation ID already exists
-              // Just log the failure
-            }
+        // 常に前ページのオーバーレイを消してから追加する。0 件の canvas に移った時に
+        // clear をスキップすると前ページの図形が残り、それを編集すると別 canvas に誤複製される。
+        anno.clearAnnotations();
+
+        // Try to add each annotation individually（個別失敗はスキップ）
+        for (const annotation of annotoriousAnnotations) {
+          try {
+            anno.addAnnotation(annotation);
+          } catch {
+            // Skip fallback - annotation ID already exists
           }
-          
-          // Track failed annotations silently
         }
       } catch {
         // Failed to set annotations
@@ -851,6 +862,17 @@ function App() {
 
   return (
     <>
+      {maintenance.enabled && (
+        <div
+          role="alert"
+          className="fixed top-16 inset-x-0 z-40 px-4 py-2 text-sm text-center
+            bg-amber-100 text-amber-900 border-b border-amber-300
+            dark:bg-amber-900/40 dark:text-amber-100 dark:border-amber-700"
+        >
+          {maintenance.message ||
+            "ただいまメンテナンス（データ移行）のため、一時的に保存できません。しばらくお待ちください。"}
+        </div>
+      )}
       {isDesktop ? (
         // PanelGroup は inline で height:100% を当てるため、親に「定値の高さ」が必要。
         // ヘッダーは h-16(4rem) + border-b(1px) = 65px 占めるので、その分を引く。

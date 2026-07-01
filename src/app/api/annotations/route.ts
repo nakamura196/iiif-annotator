@@ -4,10 +4,13 @@ import { authenticate, isAuthError } from '@/lib/apiAuth';
 import {
   createAnnotation,
   listAnnotationsByManifests,
+  listCanvasAnnotations,
+  listAllUserAnnotations,
   type AnnotationsByManifest,
   type SerializedAnnotation,
 } from '@/lib/annotations/store';
 import { validateCreate, type AnnotationInput } from '@/lib/annotations/validation';
+import { assertNotInMaintenance } from '@/lib/maintenance';
 
 interface ApiResponse {
   userId: string;
@@ -66,6 +69,20 @@ export async function GET(request: NextRequest) {
 
   const manifestIdsParam = request.nextUrl.searchParams.get('manifestIds');
   const format = request.nextUrl.searchParams.get('format');
+  const canvasId = request.nextUrl.searchParams.get('canvasId');
+  const mine = request.nextUrl.searchParams.get('mine');
+
+  // mine=1: 認証ユーザの全アノテーションを平坦なリストで返す（my-annotations 用）。
+  // read はシャード数だけで、旧来の「1件=1read で全件」より桁違いに軽い。
+  if (mine) {
+    try {
+      const items = await listAllUserAnnotations(userId);
+      return NextResponse.json({ userId, items });
+    } catch (error) {
+      console.error('Error fetching annotations:', error);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+  }
 
   if (!manifestIdsParam) {
     return NextResponse.json(
@@ -84,7 +101,17 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const annotations = await listAnnotationsByManifests(userId, manifestIds);
+    // canvasId 指定時は該当 canvas のページ 1 ドキュメントだけを読む（= 1 read）。
+    // エディタの canvas 単位表示はこの経路を使い、読み取り量を件数に依存させない。
+    const annotations =
+      canvasId && manifestIds.length === 1
+        ? [
+            {
+              manifestId: manifestIds[0],
+              items: await listCanvasAnnotations(userId, manifestIds[0], canvasId),
+            },
+          ]
+        : await listAnnotationsByManifests(userId, manifestIds);
 
     if (format === 'iiif') {
       if (manifestIds.length === 1) {
@@ -113,6 +140,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await authenticate(request);
   if (isAuthError(auth)) return auth.error;
+
+  const blocked = await assertNotInMaintenance();
+  if (blocked) return blocked;
 
   let body: AnnotationInput;
   try {

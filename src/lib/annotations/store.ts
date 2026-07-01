@@ -1,17 +1,39 @@
 // アノテーションのサーバ側 CRUD（Firebase Admin SDK 経由）。
 //
+// データモデル: 1 (manifest, canvas) を「ページ・シャード」ドキュメント群に分けて格納する。
+//   コレクション `annotationPages`。その canvas のアノテーションを items[] にまとめて持つが、
+//   Firestore の 1 ドキュメント上限は 1 MiB のため、1 コマに 1,000 件超が付く国絵図では
+//   単一ドキュメントに収まらない。そこでバイトサイズで自動的にシャード分割する:
+//
+//     docId = `${base}_${shard}`   base = sha256(userId '\n' manifestId '\n' canvasId), shard = 0,1,2...
+//     { userId, manifestId, canvasId, base, shard, items:[...], created, modified }
+//
+//   base に manifestId を含めるのは、同一 canvasId が複数 manifest から参照され得る IIIF で、
+//   manifest ごとにアノテーション集合を分けるため（旧実装は (manifestId, canvasId) で絞っていた）。
+//
+//   これにより「canvas 表示 = シャード数だけの read」になり、1件=1ドキュメントの旧方式
+//   （件数分の read で無料枠を溶かした）から桁違いに読み取りを削減しつつ、各ドキュメントは
+//   1 MiB 未満に保たれる。典型的なコマ（数百件以下）はシャード 1 個＝1 read。
+//
 // 設計の要:
-//   - ドキュメント ID を「権威ある id」とする（doc.id を最優先で返す）。
-//     旧実装はクライアントから渡された id を Firestore の doc ID として参照していたため、
-//     Annotorious の一時 ID とズレて update/delete が静かに失敗していた。サーバ側で
-//     doc ID を一意の真実とすることでこの不整合を構造的に解消する。
-//   - 所有者チェックは Admin SDK 上でも明示的に行う（Admin はセキュリティルールを
-//     バイパスするため、ここで request の userId と resource.userId を必ず照合する）。
+//   - item.id は `${docId}:${suffix}` の合成 ID。更新/削除時に id だけから所属シャードを
+//     特定できる（DELETE はボディを持てないため、id 単体で場所が分かる必要がある）。
+//   - 書き込みは対象シャードを ID 直参照したトランザクションで行う（read-modify-write を
+//     直列化し、同一ユーザが 2 タブでも壊れない）。
+//   - 所有者チェックは Admin SDK 上でも明示（Admin はルールをバイパスするため、
+//     シャードの userId と request の userId を必ず照合する）。
 
+import { createHash, randomUUID } from 'crypto';
 import { getAdminFirestore } from '@/lib/firebase-admin';
 import type { AnnotationInput } from './validation';
 
-const COLLECTION = 'annotations';
+const COLLECTION = 'annotationPages';
+
+// items 部分の JSON バイト数がこれを超えたら新しいシャードに回す。1 MiB(=1,048,576) に対し
+// フィールド名やエンコード差分の余裕を大きく取った保守的な値。
+const SHARD_SOFT_LIMIT_BYTES = 700_000;
+// これを超える書き込みは Firestore の 1 MiB 上限に近すぎるため拒否する（保存喪失=500 を防ぐ）。
+const SHARD_HARD_LIMIT_BYTES = 1_000_000;
 
 export class AnnotationError extends Error {
   status: number;
@@ -20,6 +42,31 @@ export class AnnotationError extends Error {
     this.name = 'AnnotationError';
     this.status = status;
   }
+}
+
+/** (userId, manifestId, canvasId) → シャード ID の基底（sha256 hex, 64 文字）。 */
+export function baseIdFor(userId: string, manifestId: string, canvasId: string): string {
+  return createHash('sha256').update(`${userId}\n${manifestId}\n${canvasId}`).digest('hex');
+}
+
+/** 合成 item id (`${docId}:${suffix}`) から所属シャードの docId を取り出す。壊れた形式は null。 */
+function shardIdFromItemId(id: string): string | null {
+  const idx = id.indexOf(':');
+  if (idx < 0) return null;
+  const docId = id.slice(0, idx);
+  return /^[0-9a-f]{64}_\d+$/.test(docId) ? docId : null;
+}
+
+export interface StoredItem {
+  id: string;
+  motivation?: string;
+  type?: string;
+  body?: unknown;
+  target?: unknown;
+  metadata?: unknown;
+  userName?: string | null;
+  created?: unknown;
+  modified?: unknown;
 }
 
 export interface SerializedAnnotation {
@@ -37,27 +84,44 @@ export interface SerializedAnnotation {
   modified: string | null;
 }
 
+interface PageMeta {
+  manifestId?: string;
+  canvasId?: string;
+  userId?: string;
+}
+
 function toIso(ts: unknown): string | null {
   if (!ts) return null;
-  // Firestore Timestamp / Date / {toDate} を許容
   const maybe = ts as { toDate?: () => Date };
   if (typeof maybe.toDate === 'function') return maybe.toDate().toISOString();
   if (ts instanceof Date) return ts.toISOString();
   return null;
 }
 
-/** Firestore ドキュメントを API レスポンス用に整形。id は必ず doc.id を使う。 */
-export function serializeAnnotation(
-  id: string,
-  data: FirebaseFirestore.DocumentData
-): SerializedAnnotation {
-  const { created, modified, ...rest } = data;
+/** シャード内 item を API レスポンス用に整形。manifestId/canvasId/userId は親シャードから補う。 */
+function serializeItem(item: StoredItem, page: PageMeta): SerializedAnnotation {
+  const { created, modified, ...rest } = item;
   return {
     ...rest,
-    id, // doc.id を最優先（data.id が古くても上書き）
+    manifestId: page.manifestId,
+    canvasId: page.canvasId,
+    userId: page.userId,
     created: toIso(created),
     modified: toIso(modified),
   };
+}
+
+function itemsOf(data: FirebaseFirestore.DocumentData): StoredItem[] {
+  return Array.isArray(data.items) ? (data.items as StoredItem[]) : [];
+}
+
+function shardNumOf(docId: string): number {
+  const n = Number(docId.slice(docId.lastIndexOf('_') + 1));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function itemsByteSize(items: StoredItem[]): number {
+  return Buffer.byteLength(JSON.stringify(items), 'utf8');
 }
 
 export interface CreateOptions {
@@ -72,33 +136,87 @@ export async function createAnnotation(
   options: CreateOptions = {}
 ): Promise<SerializedAnnotation> {
   const db = getAdminFirestore();
-  const docRef = db.collection(COLLECTION).doc();
+  const manifestId = input.manifestId as string;
+  const canvasId = input.canvasId as string;
+  const base = baseIdFor(userId, manifestId, canvasId);
   const now = options.now ?? new Date();
 
-  const data: FirebaseFirestore.DocumentData = {
-    manifestId: input.manifestId,
-    canvasId: input.canvasId,
+  // 追加する item の中身（id は最後に採番）。サイズ見積りのため先に組み立てる。
+  const item: StoredItem = {
+    id: '',
     motivation: input.motivation ?? 'commenting',
     type: input.type ?? 'Annotation',
     body: input.body ?? { type: 'TextualBody', value: '' },
     target: input.target,
-    id: docRef.id,
-    userId,
     userName: options.userName ?? null,
     created: now,
     modified: now,
   };
-  if (input.metadata !== undefined) data.metadata = input.metadata;
+  if (input.metadata !== undefined) item.metadata = input.metadata;
+  // id は `${64hex}_${shard}:${uuid}` 形。実長に近い定数でサイズを見積もる。
+  const newItemBytes = itemsByteSize([{ ...item, id: `${base}_0:${randomUUID()}` }]);
 
-  await docRef.set(data);
-  return serializeAnnotation(docRef.id, data);
+  // 「追加してもソフト上限を超えないシャード」を辞書順で最初に見つけたものへ入れる。
+  // 無ければ新規シャード（単体で上限超の巨大 item もここで単独シャードに載る）。
+  const shardsSnap = await db
+    .collection(COLLECTION)
+    .where('userId', '==', userId)
+    .where('manifestId', '==', manifestId)
+    .where('canvasId', '==', canvasId)
+    .get();
+
+  let targetDocId: string | null = null;
+  let maxShard = -1;
+  for (const doc of shardsSnap.docs) {
+    const data = doc.data() as FirebaseFirestore.DocumentData;
+    maxShard = Math.max(maxShard, shardNumOf(doc.id));
+    if (targetDocId === null && itemsByteSize(itemsOf(data)) + newItemBytes <= SHARD_SOFT_LIMIT_BYTES) {
+      targetDocId = doc.id;
+    }
+  }
+  const isNewShard = targetDocId === null;
+  const shard = isNewShard ? maxShard + 1 : shardNumOf(targetDocId!);
+  const docId = isNewShard ? `${base}_${shard}` : targetDocId!;
+  const ref = db.collection(COLLECTION).doc(docId);
+  item.id = `${docId}:${randomUUID()}`;
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (snap.exists) {
+      const items = itemsOf(snap.data() as FirebaseFirestore.DocumentData);
+      items.push(item);
+      // 事前クエリと tx の間に別書き込みでシャードが膨らんだ場合のハード上限ガード。
+      if (itemsByteSize(items) > SHARD_HARD_LIMIT_BYTES) {
+        throw new AnnotationError(413, 'Annotation is too large to store on this canvas shard');
+      }
+      tx.update(ref, { items, modified: now });
+    } else {
+      tx.set(ref, {
+        userId,
+        manifestId,
+        canvasId,
+        base,
+        shard,
+        userName: options.userName ?? null,
+        created: now,
+        modified: now,
+        items: [item],
+      });
+    }
+  });
+
+  return serializeItem(item, { manifestId, canvasId, userId });
 }
 
 export async function getAnnotation(id: string): Promise<SerializedAnnotation | null> {
+  const docId = shardIdFromItemId(id);
+  if (!docId) return null;
   const db = getAdminFirestore();
-  const snap = await db.collection(COLLECTION).doc(id).get();
+  const snap = await db.collection(COLLECTION).doc(docId).get();
   if (!snap.exists) return null;
-  return serializeAnnotation(snap.id, snap.data() as FirebaseFirestore.DocumentData);
+  const data = snap.data() as FirebaseFirestore.DocumentData;
+  const item = itemsOf(data).find((it) => it.id === id);
+  return item ? serializeItem(item, data) : null;
 }
 
 export async function updateAnnotation(
@@ -107,51 +225,103 @@ export async function updateAnnotation(
   input: AnnotationInput,
   options: { now?: Date } = {}
 ): Promise<SerializedAnnotation> {
+  const docId = shardIdFromItemId(id);
+  if (!docId) throw new AnnotationError(404, 'Annotation not found');
   const db = getAdminFirestore();
-  const docRef = db.collection(COLLECTION).doc(id);
-  const snap = await docRef.get();
-
-  if (!snap.exists) {
-    throw new AnnotationError(404, 'Annotation not found');
-  }
-  const existing = snap.data() as FirebaseFirestore.DocumentData;
-  if (existing.userId !== userId) {
-    throw new AnnotationError(403, 'You do not have permission to modify this annotation');
-  }
-
+  const ref = db.collection(COLLECTION).doc(docId);
   const now = options.now ?? new Date();
-  const patch: FirebaseFirestore.DocumentData = { modified: now };
-  if (input.body !== undefined) patch.body = input.body;
-  if (input.target !== undefined) patch.target = input.target;
-  if (input.motivation !== undefined) patch.motivation = input.motivation;
-  if (input.type !== undefined) patch.type = input.type;
-  if (input.manifestId !== undefined) patch.manifestId = input.manifestId;
-  if (input.canvasId !== undefined) patch.canvasId = input.canvasId;
-  if (input.metadata !== undefined) patch.metadata = input.metadata;
 
-  await docRef.update(patch);
-  return serializeAnnotation(id, { ...existing, ...patch });
+  let result: SerializedAnnotation | undefined;
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new AnnotationError(404, 'Annotation not found');
+    const data = snap.data() as FirebaseFirestore.DocumentData;
+    if (data.userId !== userId) {
+      throw new AnnotationError(403, 'You do not have permission to modify this annotation');
+    }
+    const items = itemsOf(data);
+    const idx = items.findIndex((it) => it.id === id);
+    if (idx < 0) throw new AnnotationError(404, 'Annotation not found');
+
+    const patched: StoredItem = { ...items[idx], modified: now };
+    if (input.body !== undefined) patched.body = input.body;
+    if (input.target !== undefined) patched.target = input.target;
+    if (input.motivation !== undefined) patched.motivation = input.motivation;
+    if (input.type !== undefined) patched.type = input.type;
+    if (input.metadata !== undefined) patched.metadata = input.metadata;
+
+    items[idx] = patched;
+    if (itemsByteSize(items) > SHARD_HARD_LIMIT_BYTES) {
+      throw new AnnotationError(413, 'Annotation is too large to store on this canvas shard');
+    }
+    tx.update(ref, { items, modified: now });
+    result = serializeItem(patched, data);
+  });
+
+  return result as SerializedAnnotation;
 }
 
 export async function deleteAnnotation(userId: string, id: string): Promise<void> {
+  const docId = shardIdFromItemId(id);
+  if (!docId) throw new AnnotationError(404, 'Annotation not found');
   const db = getAdminFirestore();
-  const docRef = db.collection(COLLECTION).doc(id);
-  const snap = await docRef.get();
+  const ref = db.collection(COLLECTION).doc(docId);
 
-  if (!snap.exists) {
-    throw new AnnotationError(404, 'Annotation not found');
-  }
-  const existing = snap.data() as FirebaseFirestore.DocumentData;
-  if (existing.userId !== userId) {
-    throw new AnnotationError(403, 'You do not have permission to delete this annotation');
-  }
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new AnnotationError(404, 'Annotation not found');
+    const data = snap.data() as FirebaseFirestore.DocumentData;
+    if (data.userId !== userId) {
+      throw new AnnotationError(403, 'You do not have permission to delete this annotation');
+    }
+    const items = itemsOf(data);
+    const idx = items.findIndex((it) => it.id === id);
+    if (idx < 0) throw new AnnotationError(404, 'Annotation not found');
 
-  await docRef.delete();
+    items.splice(idx, 1);
+    if (items.length === 0) {
+      tx.delete(ref);
+    } else {
+      tx.update(ref, { items, modified: new Date() });
+    }
+  });
 }
 
 export interface AnnotationsByManifest {
   manifestId: string;
   items: SerializedAnnotation[];
+}
+
+/** 指定ユーザの、指定 (manifest, canvas) のアノテーションを返す（シャード数だけの read）。 */
+export async function listCanvasAnnotations(
+  userId: string,
+  manifestId: string,
+  canvasId: string
+): Promise<SerializedAnnotation[]> {
+  const db = getAdminFirestore();
+  const snapshot = await db
+    .collection(COLLECTION)
+    .where('userId', '==', userId)
+    .where('manifestId', '==', manifestId)
+    .where('canvasId', '==', canvasId)
+    .get();
+
+  return snapshot.docs
+    .sort((a, b) => shardNumOf(a.id) - shardNumOf(b.id))
+    .flatMap((doc) => {
+      const data = doc.data() as FirebaseFirestore.DocumentData;
+      return itemsOf(data).map((it) => serializeItem(it, data));
+    });
+}
+
+/** 指定ユーザの全アノテーションを返す（my-annotations 用。read はシャード数だけ）。 */
+export async function listAllUserAnnotations(userId: string): Promise<SerializedAnnotation[]> {
+  const db = getAdminFirestore();
+  const snapshot = await db.collection(COLLECTION).where('userId', '==', userId).get();
+  return snapshot.docs.flatMap((doc) => {
+    const data = doc.data() as FirebaseFirestore.DocumentData;
+    return itemsOf(data).map((it) => serializeItem(it, data));
+  });
 }
 
 /** 指定ユーザの、指定 manifest 群に紐づくアノテーションを manifest ごとにまとめて返す。 */
@@ -169,9 +339,10 @@ export async function listAnnotationsByManifests(
       .where('manifestId', '==', manifestId)
       .get();
 
-    const items = snapshot.docs.map((doc) =>
-      serializeAnnotation(doc.id, doc.data() as FirebaseFirestore.DocumentData)
-    );
+    const items = snapshot.docs.flatMap((doc) => {
+      const data = doc.data() as FirebaseFirestore.DocumentData;
+      return itemsOf(data).map((it) => serializeItem(it, data));
+    });
     result.push({ manifestId, items });
   }
 

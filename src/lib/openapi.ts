@@ -83,6 +83,14 @@ export const openApiSpec = {
             description: 'カンマ区切りの Manifest URL',
           },
           {
+            name: 'canvasId',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description:
+              'IIIF Canvas URL。manifestIds が単一のとき指定すると、その canvas のアノテーションだけを返す（読み取り量を抑える）',
+          },
+          {
             name: 'format',
             in: 'query',
             required: false,
@@ -124,6 +132,10 @@ export const openApiSpec = {
             content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
           },
           '401': { description: '未認証' },
+          '503': {
+            description: 'メンテナンス中（書き込み一時停止）',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
+          },
         },
       },
     },
@@ -160,6 +172,7 @@ export const openApiSpec = {
           '401': { description: '未認証' },
           '403': { description: '所有者でない' },
           '404': { description: '存在しない' },
+          '503': { description: 'メンテナンス中（書き込み一時停止）' },
         },
       },
       delete: {
@@ -169,6 +182,7 @@ export const openApiSpec = {
           '401': { description: '未認証' },
           '403': { description: '所有者でない' },
           '404': { description: '存在しない' },
+          '503': { description: 'メンテナンス中（書き込み一時停止）' },
         },
       },
     },

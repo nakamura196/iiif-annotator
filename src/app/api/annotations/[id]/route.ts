@@ -7,6 +7,7 @@ import {
   AnnotationError,
 } from '@/lib/annotations/store';
 import { validateUpdate, type AnnotationInput } from '@/lib/annotations/validation';
+import { assertNotInMaintenance } from '@/lib/maintenance';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -40,6 +41,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const auth = await authenticate(request);
   if (isAuthError(auth)) return auth.error;
 
+  const blocked = await assertNotInMaintenance();
+  if (blocked) return blocked;
+
   const { id } = await params;
 
   let body: AnnotationInput;
@@ -66,6 +70,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
 export async function DELETE(request: NextRequest, { params }: Params) {
   const auth = await authenticate(request);
   if (isAuthError(auth)) return auth.error;
+
+  const blocked = await assertNotInMaintenance();
+  if (blocked) return blocked;
 
   const { id } = await params;
   try {

@@ -50,6 +50,8 @@ function makeQuery(name: string, filters: Array<[string, string, unknown]>) {
   };
 }
 
+type DocRef = ReturnType<typeof makeDocRef>;
+
 const fakeDb = {
   collection(name: string) {
     return {
@@ -57,6 +59,27 @@ const fakeDb = {
       where: (field: string, op: string, value: unknown) =>
         makeQuery(name, [[field, op, value]]),
     };
+  },
+  // 実 Admin SDK の runTransaction を最小限に再現。tx 操作は docRef 経由で即時に Map へ反映。
+  async runTransaction<T>(fn: (tx: {
+    get: (ref: DocRef) => ReturnType<DocRef['get']>;
+    set: (ref: DocRef, data: Doc) => void;
+    update: (ref: DocRef, patch: Doc) => void;
+    delete: (ref: DocRef) => void;
+  }) => Promise<T>): Promise<T> {
+    const tx = {
+      get: (ref: DocRef) => ref.get(),
+      set: (ref: DocRef, data: Doc) => {
+        void ref.set(data);
+      },
+      update: (ref: DocRef, patch: Doc) => {
+        void ref.update(patch);
+      },
+      delete: (ref: DocRef) => {
+        void ref.delete();
+      },
+    };
+    return fn(tx);
   },
 };
 
@@ -70,6 +93,8 @@ import {
   updateAnnotation,
   deleteAnnotation,
   listAnnotationsByManifests,
+  listCanvasAnnotations,
+  listAllUserAnnotations,
   AnnotationError,
 } from './store';
 
@@ -152,7 +177,12 @@ describe('deleteAnnotation', () => {
 describe('listAnnotationsByManifests', () => {
   it('userId と manifestId で絞り込み、manifest ごとにまとめる', async () => {
     await createAnnotation('user-1', baseInput);
-    await createAnnotation('user-1', { ...baseInput, manifestId: 'https://example.com/m2' });
+    // 別 manifest は別 canvas（canvasId は IIIF 上グローバル一意）。ページ集約でも別ドキュメントになる。
+    await createAnnotation('user-1', {
+      ...baseInput,
+      manifestId: 'https://example.com/m2',
+      canvasId: 'https://example.com/m2/canvas/1',
+    });
     await createAnnotation('user-2', baseInput); // 別ユーザ（除外される）
 
     const res = await listAnnotationsByManifests('user-1', [
@@ -163,5 +193,37 @@ describe('listAnnotationsByManifests', () => {
     const m1 = res.find((r) => r.manifestId === 'https://example.com/m1')!;
     expect(m1.items).toHaveLength(1);
     expect(m1.items[0].userId).toBe('user-1');
+  });
+
+  it('同一 canvasId でも manifest が違えば分離される（base に manifestId を含むため）', async () => {
+    const sharedCanvas = 'https://example.com/shared/canvas/1';
+    await createAnnotation('user-1', { ...baseInput, manifestId: 'https://example.com/mA', canvasId: sharedCanvas });
+    await createAnnotation('user-1', { ...baseInput, manifestId: 'https://example.com/mB', canvasId: sharedCanvas });
+
+    // canvas 単位取得は (manifest, canvas) で絞るので、他 manifest 分が混ざらない。
+    const aOnly = await listCanvasAnnotations('user-1', 'https://example.com/mA', sharedCanvas);
+    expect(aOnly).toHaveLength(1);
+    expect(aOnly[0].manifestId).toBe('https://example.com/mA');
+
+    // manifest 単位取得でも B 分が欠落しない。
+    const byManifest = await listAnnotationsByManifests('user-1', ['https://example.com/mB']);
+    expect(byManifest[0].items).toHaveLength(1);
+    expect(byManifest[0].items[0].manifestId).toBe('https://example.com/mB');
+  });
+});
+
+describe('listAllUserAnnotations', () => {
+  it('ユーザの全 (manifest, canvas) を跨いで全 item を返す', async () => {
+    await createAnnotation('user-1', baseInput);
+    await createAnnotation('user-1', {
+      ...baseInput,
+      manifestId: 'https://example.com/m2',
+      canvasId: 'https://example.com/m2/canvas/1',
+    });
+    await createAnnotation('user-2', baseInput); // 別ユーザは含まれない
+
+    const mine = await listAllUserAnnotations('user-1');
+    expect(mine).toHaveLength(2);
+    expect(mine.every((a) => a.userId === 'user-1')).toBe(true);
   });
 });

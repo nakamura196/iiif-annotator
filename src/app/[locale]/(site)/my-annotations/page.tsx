@@ -4,13 +4,6 @@ import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { getIIIFLabel } from "@/lib/utils/iiifLabel";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  getFirestore,
-} from "firebase/firestore";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -53,38 +46,39 @@ export default function MyAnnotationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const loadAnnotations = async (userId: string) => {
+  // アノテーションは API 経由で取得する（書き込みと同じ API ファースト経路）。
+  // サーバは新モデル annotationPages を userId で引き、シャードの items を平坦化して返すため、
+  // read はシャード数だけ（旧来のクライアント直読み＝1件1read で全件、より桁違いに軽い）。
+  const loadAnnotations = async (currentUser: User) => {
     try {
       setLoading(true);
       setError(null);
 
-      const db = getFirestore();
-      const annotationsRef = collection(db, "annotations");
-      // Remove orderBy to avoid requiring a composite index
-      const q = query(
-        annotationsRef,
-        where("userId", "==", userId)
-      );
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/annotations?mine=1", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        throw new Error(`load failed (${res.status})`);
+      }
+      const data = await res.json();
+      // created/modified は ISO 文字列で返るので Date に正規化する。
+      const loaded: Annotation[] = (data.items || []).map(
+        (it: { created?: string; modified?: string } & Record<string, unknown>) => ({
+          ...it,
+          created: it.created ? new Date(it.created) : new Date(0),
+          modified: it.modified ? new Date(it.modified) : new Date(0),
+        })
+      ) as Annotation[];
 
-      const querySnapshot = await getDocs(q);
-      const loadedAnnotations: Annotation[] = [];
-
-      querySnapshot.forEach((doc) => {
-        loadedAnnotations.push({
-          id: doc.id,
-          ...doc.data(),
-        } as Annotation);
+      loaded.sort((a, b) => {
+        const at = a.modified instanceof Date ? a.modified.getTime() : 0;
+        const bt = b.modified instanceof Date ? b.modified.getTime() : 0;
+        return bt - at; // 新しい順
       });
 
-      // Sort in memory instead of using Firestore orderBy
-      loadedAnnotations.sort((a, b) => {
-        const aTime = 'seconds' in a.modified ? a.modified.seconds : 0;
-        const bTime = 'seconds' in b.modified ? b.modified.seconds : 0;
-        return bTime - aTime; // Descending order (newest first)
-      });
-
-      setAnnotations(loadedAnnotations);
-      setFilteredAnnotations(loadedAnnotations);
+      setAnnotations(loaded);
+      setFilteredAnnotations(loaded);
     } catch (err) {
       console.error("Error loading annotations:", err);
       setError(t("loadError"));
@@ -98,7 +92,7 @@ export default function MyAnnotationsPage() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        await loadAnnotations(currentUser.uid);
+        await loadAnnotations(currentUser);
       } else {
         setLoading(false);
       }
