@@ -24,6 +24,8 @@ export interface AnnotationInput {
   // セレクタの形は IIIF/Annotorious 由来で揺れがあるため unknown 受けにし、存在のみ検証する。
   target?: unknown;
   metadata?: MetadataPair[];
+  // 自由記述のタグ（例: "OCR"）。メタデータスキーマ({label,value})とは別立ての単純な文字列集合。
+  tags?: string[];
 }
 
 export interface ValidationResult {
@@ -60,6 +62,22 @@ export function normalizeMetadata(raw: unknown): MetadataPair[] | undefined {
   return cleaned;
 }
 
+/** tags を「非空・trim 済み・重複排除」の文字列配列に正規化。配列でなければ undefined。
+ *  空配列はそのまま返す（＝更新時に全タグ削除を表現できる）。 */
+export function normalizeTags(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const t of raw) {
+    if (typeof t !== 'string') continue;
+    const s = t.trim();
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
+}
+
 function normalizeBody(raw: unknown): AnnotationBody | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const r = raw as { type?: unknown; value?: unknown };
@@ -82,6 +100,8 @@ function normalizeCommon(input: AnnotationInput): AnnotationInput {
   if (body) value.body = body;
   const metadata = normalizeMetadata(input.metadata);
   if (metadata) value.metadata = metadata;
+  const tags = normalizeTags(input.tags);
+  if (tags !== undefined) value.tags = tags;
   return value;
 }
 
@@ -116,6 +136,7 @@ export function validateUpdate(input: AnnotationInput): ValidationResult {
     value.target !== undefined ||
     value.motivation !== undefined ||
     value.metadata !== undefined ||
+    value.tags !== undefined ||
     value.type !== undefined;
   if (!hasAnyField) errors.push('no updatable fields provided');
 

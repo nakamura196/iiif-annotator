@@ -20,13 +20,15 @@ interface AnnotationFormProps {
   id: string;
   text: string;
   metadata?: MetadataField[];
+  /** 現在のタグ（例: ["OCR"]）。メタデータスキーマとは別立て。 */
+  tags?: string[];
   /** 選択中の語彙のプロパティ（入力候補）。 */
   vocabulary?: string[];
   /** 選択可能な語彙一覧（手動選択用）。 */
   vocabularies?: VocabularyOption[];
   selectedVocabId?: string;
   onSelectVocab?: (id: string) => void;
-  onChange: (text: string, metadata: MetadataField[]) => void | Promise<void>;
+  onChange: (text: string, metadata: MetadataField[], tags: string[]) => void | Promise<void>;
   onDelete: (ids: string[]) => void;
 }
 
@@ -36,6 +38,7 @@ export function AnnotationForm({
   id,
   text,
   metadata,
+  tags,
   vocabulary = [],
   vocabularies = [],
   selectedVocabId = "",
@@ -47,6 +50,9 @@ export function AnnotationForm({
   const [editorContent, setEditorContent] = useState(text);
   // メタデータ(key-value)行の状態
   const [rows, setRows] = useState<MetadataField[]>(metadata || []);
+  // タグ（単純な文字列集合）の状態と新規入力欄
+  const [tagList, setTagList] = useState<string[]>(tags || []);
+  const [tagInput, setTagInput] = useState("");
   // 保存中フラグ（サーバ書き込み中はボタンをローディング表示＆無効化して二重送信を防ぐ）
   const [saving, setSaving] = useState(false);
   const t = useTranslations('Editor');
@@ -59,6 +65,20 @@ export function AnnotationForm({
   useEffect(() => {
     setRows(metadata || []);
   }, [metadata]);
+
+  // 選択中アノテーションが変わったら tags を反映
+  useEffect(() => {
+    setTagList(tags || []);
+    setTagInput("");
+  }, [tags]);
+
+  const addTag = () => {
+    const v = tagInput.trim();
+    if (!v) return;
+    setTagList((prev) => (prev.includes(v) ? prev : [...prev, v]));
+    setTagInput("");
+  };
+  const removeTag = (tag: string) => setTagList((prev) => prev.filter((t) => t !== tag));
 
   const updateRow = (index: number, patch: Partial<MetadataField>) => {
     setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -78,7 +98,7 @@ export function AnnotationForm({
     if (saving) return;
     setSaving(true);
     try {
-      await onChange(editorContent, rows);
+      await onChange(editorContent, rows, tagList);
     } finally {
       setSaving(false);
     }
@@ -169,6 +189,56 @@ export function AnnotationForm({
           >
             <Plus className="w-4 h-4" /> {t('addMetadataField')}
           </button>
+        </div>
+
+        {/* タグ（メタデータスキーマとは別立ての単純な文字列集合）。追加・削除できる。 */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-[var(--ds-fg)]">{t('tags')}</p>
+          {tagList.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {tagList.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded
+                    text-xs font-medium bg-[var(--ds-primary)] text-white"
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => removeTag(tag)}
+                    className="p-0.5 rounded hover:bg-white/20"
+                    title={t('removeTag')}
+                    aria-label={t('removeTag')}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addTag();
+                }
+              }}
+              placeholder={t('tagPlaceholder')}
+              className="flex-1 min-w-0 p-2 text-sm border rounded-md bg-[var(--ds-bg)]
+                border-[var(--ds-border)] text-[var(--ds-fg)]"
+            />
+            <button
+              type="button"
+              onClick={addTag}
+              className="inline-flex items-center gap-1 text-sm text-[var(--ds-primary)] hover:underline shrink-0"
+            >
+              <Plus className="w-4 h-4" /> {t('addTag')}
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">

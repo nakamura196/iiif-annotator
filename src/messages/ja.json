@@ -122,6 +122,10 @@
     "metadataLabelPlaceholder": "項目名（例: 図面種別）",
     "metadataValuePlaceholder": "値",
     "removeMetadataField": "この項目を削除",
+    "tags": "タグ",
+    "addTag": "タグを追加",
+    "removeTag": "このタグを削除",
+    "tagPlaceholder": "タグ（例: OCR）",
     "selectVocabulary": "使用する語彙を選択"
   },
   "MetadataVocab": {
@@ -166,6 +170,10 @@
     "sortOldest": "古い順",
     "sortTextAsc": "名前順（昇順）",
     "sortTextDesc": "名前順（降順）",
+    "tagFilter": "タグで絞り込み",
+    "tagAll": "すべてのタグ",
+    "tagExcludeOcr": "OCRを除外",
+    "tagOnlyOcr": "OCRのみ",
     "locale": "ja",
     "created": "作成",
     "modified": "更新",
@@ -254,7 +262,11 @@
     "backToCanvases": "コマ一覧へ",
     "canvasCount": "{count}コマ",
     "annotationCount": "{count}件",
-    "openInEditor": "エディタで開く"
+    "openInEditor": "エディタで開く",
+    "tagFilter": "タグで絞り込み",
+    "tagAll": "すべてのタグ",
+    "tagExcludeOcr": "OCRを除外",
+    "tagOnlyOcr": "OCRのみ"
   },
   "Changelog": {
     "title": "更新履歴",

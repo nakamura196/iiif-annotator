@@ -7,6 +7,8 @@ import {
   listCanvasAnnotations,
   listAllUserAnnotations,
   summarizeUserAnnotations,
+  parseTagFilter,
+  filterAnnotationsByTag,
   type AnnotationsByManifest,
   type SerializedAnnotation,
 } from '@/lib/annotations/store';
@@ -51,6 +53,9 @@ async function buildIIIFManifest(manifestId: string, items: SerializedAnnotation
           body: annotation.body,
           target: annotation.target,
           ...(annotation.metadata ? { metadata: annotation.metadata } : {}),
+          ...(annotation.tags && (annotation.tags as string[]).length
+            ? { tags: annotation.tags }
+            : {}),
         })),
       },
     ];
@@ -73,6 +78,7 @@ export async function GET(request: NextRequest) {
   const canvasId = request.nextUrl.searchParams.get('canvasId');
   const mine = request.nextUrl.searchParams.get('mine');
   const summary = request.nextUrl.searchParams.get('summary');
+  const tagFilter = parseTagFilter(request.nextUrl.searchParams.get('tag'));
 
   // summary=1: manifest×canvas の件数だけを返す（my-annotations の階層概要用。本文なし＝極小）。
   if (summary) {
@@ -89,7 +95,7 @@ export async function GET(request: NextRequest) {
   // read はシャード数だけで、旧来の「1件=1read で全件」より桁違いに軽い。
   if (mine) {
     try {
-      const items = await listAllUserAnnotations(userId);
+      const items = filterAnnotationsByTag(await listAllUserAnnotations(userId), tagFilter);
       return NextResponse.json({ userId, items });
     } catch (error) {
       console.error('Error fetching annotations:', error);
@@ -116,7 +122,7 @@ export async function GET(request: NextRequest) {
   try {
     // canvasId 指定時は該当 canvas のページ 1 ドキュメントだけを読む（= 1 read）。
     // エディタの canvas 単位表示はこの経路を使い、読み取り量を件数に依存させない。
-    const annotations =
+    const rawAnnotations =
       canvasId && manifestIds.length === 1
         ? [
             {
@@ -125,6 +131,11 @@ export async function GET(request: NextRequest) {
             },
           ]
         : await listAnnotationsByManifests(userId, manifestIds);
+
+    // tag 絞り込み（tag=OCR / tag=-OCR など）。指定が無ければ素通り。
+    const annotations = tagFilter
+      ? rawAnnotations.map((a) => ({ ...a, items: filterAnnotationsByTag(a.items, tagFilter) }))
+      : rawAnnotations;
 
     if (format === 'iiif') {
       if (manifestIds.length === 1) {

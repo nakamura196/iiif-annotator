@@ -107,6 +107,7 @@ export default class FirestoreAnnotationAdapter {
       body: annotation.body,
       target: annotation.target,
       ...(annotation.metadata ? { metadata: annotation.metadata } : {}),
+      ...(annotation.tags !== undefined ? { tags: annotation.tags } : {}),
     };
     const res = await fetch("/api/annotations", {
       method: "POST",
@@ -139,6 +140,7 @@ export default class FirestoreAnnotationAdapter {
       body: annotation.body,
       target: annotation.target,
       ...(annotation.metadata ? { metadata: annotation.metadata } : {}),
+      ...(annotation.tags !== undefined ? { tags: annotation.tags } : {}),
     };
     const res = await fetch(`/api/annotations/${encodeURIComponent(annotation.id)}`, {
       method: "PUT",

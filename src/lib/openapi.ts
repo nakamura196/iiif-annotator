@@ -42,6 +42,11 @@ export const openApiSpec = {
             description: 'W3C/IIIF target（selector を含む）',
           },
           metadata: { type: 'array', items: { $ref: '#/components/schemas/MetadataPair' } },
+          tags: {
+            type: 'array',
+            items: { type: 'string' },
+            description: '自由記述タグ（例: ["OCR"]）。空配列を送ると全タグ削除。',
+          },
         },
         required: ['manifestId', 'canvasId', 'target'],
       },
@@ -96,6 +101,14 @@ export const openApiSpec = {
             required: false,
             schema: { type: 'string', enum: ['iiif'] },
             description: 'iiif を指定すると IIIF Manifest 形式で返す',
+          },
+          {
+            name: 'tag',
+            in: 'query',
+            required: false,
+            schema: { type: 'string' },
+            description:
+              'タグで絞り込み。カンマ区切り可。先頭に - を付けると除外（例: tag=OCR は OCR のみ、tag=-OCR は OCR を除外）',
           },
         ],
         responses: {
