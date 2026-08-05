@@ -51,7 +51,7 @@
     "fast-xml-parser": ">=5.6.1",
     "flatted": ">=3.4.2",
     "node-forge": ">=1.4.0",
-    "socket.io-parser": ">=4.2.6",
+    "socket.io-parser": ">=4.2.7",
     "@grpc/grpc-js": ">=1.14.4",
     "esbuild": ">=0.28.1",
     "picomatch": ">=2.3.2 <3",
