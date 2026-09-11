@@ -47,7 +47,7 @@
     "@ckeditor/ckeditor5-ai": {
       "@aws-sdk/client-bedrock-runtime": "^3.894.0"
     },
-    "protobufjs": ">=8.6.5",
+    "protobufjs": ">=8.8.0",
     "fast-xml-parser": ">=5.6.1",
     "flatted": ">=3.4.2",
     "node-forge": ">=1.4.0",
