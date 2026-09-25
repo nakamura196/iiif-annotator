@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/:rest((?!api(?:/|$)).*)",
+      "has": [{ "type": "host", "value": "iiif-annotator.vercel.app" }],
+      "destination": "https://anno.ldas.jp/:rest",
+      "permanent": true
+    }
+  ]
+}

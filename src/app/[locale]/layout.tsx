@@ -9,6 +9,7 @@ import { Mascot } from "@/components/Mascot";
 import { routing } from '@/i18n/routing';
 import Script from 'next/script';
 import { GoogleAnalytics } from '@next/third-parties/google';
+import { SITE_URL } from '@/lib/site';
 
 // Google Analytics の測定ID。専用の NEXT_PUBLIC_GA_ID があればそれを使い、
 // 無ければ Firebase 由来の既存 GA4 プロパティ (NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID) を再利用する。
@@ -31,7 +32,7 @@ const notoSerif = Noto_Serif_JP({
 
 const title = "IIIF Annotator";
 const description = "Annotate IIIF images with Annotorious v3";
-const url = "https://iiif-annotator.vercel.app";
+const url = SITE_URL;
 const imageUrl = `${url}/ogp.webp`;
 const twitter = "@nsatoru196";
 

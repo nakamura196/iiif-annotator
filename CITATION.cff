@@ -11,7 +11,7 @@ version: "0.1.0"
 date-released: "2026-05-26"
 license: MIT
 repository-code: "https://github.com/nakamura196/iiif-annotator"
-url: "https://iiif-annotator.vercel.app"
+url: "https://anno.ldas.jp"
 keywords:
   - IIIF
   - annotation
