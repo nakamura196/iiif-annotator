@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "dev:op": "op run --env-file=.env.local -- npm run dev",
-    "start:op": "op run --env-file=.env.local -- npm run start"
+    "start:op": "op run --env-file=.env.local -- npm run start",
+    "test:live": "node scripts/check-live.mjs"
   },
   "dependencies": {
     "@annotorious/annotorious": "3.7.4",
