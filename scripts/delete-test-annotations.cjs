@@ -12,7 +12,8 @@
  *
  * 事前バックアップ: next-fb-anno/backups/firestore-backup-2026-07-01T12-51-58-141Z.json.gz
  */
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 
 const COLLECTION = 'annotationPages';
 const DRUPAL_PREFIX = 'https://drupal.lab.hi.u-tokyo.ac.jp/api/iiif/2/';
@@ -23,8 +24,8 @@ function initDb() {
   const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
   if (!b64) throw new Error('FIREBASE_SERVICE_ACCOUNT_BASE64 is not set');
   const sa = JSON.parse(Buffer.from(b64, 'base64').toString('utf-8'));
-  admin.initializeApp({ credential: admin.credential.cert(sa) });
-  return admin.firestore();
+  initializeApp({ credential: cert(sa) });
+  return getFirestore();
 }
 
 function bodyText(body) {
