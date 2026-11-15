@@ -1,49 +1,48 @@
-import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
-import { getAuth, Auth } from 'firebase-admin/auth';
+// Server-side Firebase access (Firestore + ID token verification).
+//
+// Backed by the REST client in ./firestore-rest rather than the firebase-admin package,
+// because firebase-admin does not run on Cloudflare Workers. The exported function names
+// are kept so existing call sites and test mocks (`vi.mock('@/lib/firebase-admin')`) work.
+// (firebase-admin itself remains a devDependency for the local maintenance scripts in scripts/.)
 
-let app: App | undefined;
+import {
+  Firestore,
+  FirebaseAuthVerifier,
+  GoogleAccessTokenProvider,
+  type ServiceAccount,
+} from './firestore-rest';
+
+let serviceAccount: ServiceAccount | undefined;
 let db: Firestore | undefined;
+let auth: FirebaseAuthVerifier | undefined;
 
-function ensureApp(): App {
-  if (app) {
-    return app;
-  }
-
-  const existing = getApps();
-  if (existing.length > 0) {
-    app = existing[0];
-    return app;
-  }
+function loadServiceAccount(): ServiceAccount {
+  if (serviceAccount) return serviceAccount;
 
   const base64ServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
-
   if (!base64ServiceAccount) {
     throw new Error('FIREBASE_SERVICE_ACCOUNT_BASE64 environment variable is not set');
   }
 
-  const serviceAccount = JSON.parse(
-    Buffer.from(base64ServiceAccount, 'base64').toString('utf-8')
-  );
-
-  app = initializeApp({
-    credential: cert(serviceAccount),
-  });
-
-  return app;
+  const parsed = JSON.parse(Buffer.from(base64ServiceAccount, 'base64').toString('utf-8'));
+  if (!parsed.project_id || !parsed.client_email || !parsed.private_key) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT_BASE64 is not a service account JSON');
+  }
+  serviceAccount = parsed as ServiceAccount;
+  return serviceAccount;
 }
 
 export function getAdminFirestore(): Firestore {
-  if (db) {
-    return db;
-  }
-
-  ensureApp();
-  db = getFirestore();
+  if (db) return db;
+  const sa = loadServiceAccount();
+  const tokens = new GoogleAccessTokenProvider(sa);
+  db = new Firestore(sa.project_id, () => tokens.get());
   return db;
 }
 
-/** Firebase Admin Auth（ブラウザの ID トークン検証に使う）。 */
-export function getAdminAuth(): Auth {
-  return getAuth(ensureApp());
+/** Verifies browser ID tokens issued by Firebase Auth. */
+export function getAdminAuth(): FirebaseAuthVerifier {
+  if (auth) return auth;
+  auth = new FirebaseAuthVerifier(loadServiceAccount().project_id);
+  return auth;
 }

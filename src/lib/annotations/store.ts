@@ -1,4 +1,4 @@
-// アノテーションのサーバ側 CRUD（Firebase Admin SDK 経由）。
+// アノテーションのサーバ側 CRUD（Firestore REST 経由。src/lib/firestore-rest.ts）。
 //
 // データモデル: 1 (manifest, canvas) を「ページ・シャード」ドキュメント群に分けて格納する。
 //   コレクション `annotationPages`。その canvas のアノテーションを items[] にまとめて持つが、
@@ -25,6 +25,7 @@
 
 import { createHash, randomUUID } from 'crypto';
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import type { DocumentData } from '@/lib/firestore-rest';
 import type { AnnotationInput } from './validation';
 
 const COLLECTION = 'annotationPages';
@@ -113,7 +114,7 @@ function serializeItem(item: StoredItem, page: PageMeta): SerializedAnnotation {
   };
 }
 
-function itemsOf(data: FirebaseFirestore.DocumentData): StoredItem[] {
+function itemsOf(data: DocumentData): StoredItem[] {
   return Array.isArray(data.items) ? (data.items as StoredItem[]) : [];
 }
 
@@ -212,7 +213,7 @@ export async function createAnnotation(
   let targetDocId: string | null = null;
   let maxShard = -1;
   for (const doc of shardsSnap.docs) {
-    const data = doc.data() as FirebaseFirestore.DocumentData;
+    const data = doc.data() as DocumentData;
     maxShard = Math.max(maxShard, shardNumOf(doc.id));
     if (targetDocId === null && itemsByteSize(itemsOf(data)) + newItemBytes <= SHARD_SOFT_LIMIT_BYTES) {
       targetDocId = doc.id;
@@ -227,7 +228,7 @@ export async function createAnnotation(
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (snap.exists) {
-      const items = itemsOf(snap.data() as FirebaseFirestore.DocumentData);
+      const items = itemsOf(snap.data() as DocumentData);
       items.push(item);
       // 事前クエリと tx の間に別書き込みでシャードが膨らんだ場合のハード上限ガード。
       if (itemsByteSize(items) > SHARD_HARD_LIMIT_BYTES) {
@@ -258,7 +259,7 @@ export async function getAnnotation(id: string): Promise<SerializedAnnotation | 
   const db = getAdminFirestore();
   const snap = await db.collection(COLLECTION).doc(docId).get();
   if (!snap.exists) return null;
-  const data = snap.data() as FirebaseFirestore.DocumentData;
+  const data = snap.data() as DocumentData;
   const item = itemsOf(data).find((it) => it.id === id);
   return item ? serializeItem(item, data) : null;
 }
@@ -279,7 +280,7 @@ export async function updateAnnotation(
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists) throw new AnnotationError(404, 'Annotation not found');
-    const data = snap.data() as FirebaseFirestore.DocumentData;
+    const data = snap.data() as DocumentData;
     if (data.userId !== userId) {
       throw new AnnotationError(403, 'You do not have permission to modify this annotation');
     }
@@ -315,7 +316,7 @@ export async function deleteAnnotation(userId: string, id: string): Promise<void
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists) throw new AnnotationError(404, 'Annotation not found');
-    const data = snap.data() as FirebaseFirestore.DocumentData;
+    const data = snap.data() as DocumentData;
     if (data.userId !== userId) {
       throw new AnnotationError(403, 'You do not have permission to delete this annotation');
     }
@@ -354,7 +355,7 @@ export async function listCanvasAnnotations(
   return snapshot.docs
     .sort((a, b) => shardNumOf(a.id) - shardNumOf(b.id))
     .flatMap((doc) => {
-      const data = doc.data() as FirebaseFirestore.DocumentData;
+      const data = doc.data() as DocumentData;
       return itemsOf(data).map((it) => serializeItem(it, data));
     });
 }
@@ -364,7 +365,7 @@ export async function listAllUserAnnotations(userId: string): Promise<Serialized
   const db = getAdminFirestore();
   const snapshot = await db.collection(COLLECTION).where('userId', '==', userId).get();
   return snapshot.docs.flatMap((doc) => {
-    const data = doc.data() as FirebaseFirestore.DocumentData;
+    const data = doc.data() as DocumentData;
     return itemsOf(data).map((it) => serializeItem(it, data));
   });
 }
@@ -390,7 +391,7 @@ export async function summarizeUserAnnotations(userId: string): Promise<Manifest
   // manifestId -> (canvasId -> count)
   const byManifest = new Map<string, Map<string, number>>();
   for (const doc of snapshot.docs) {
-    const data = doc.data() as FirebaseFirestore.DocumentData;
+    const data = doc.data() as DocumentData;
     const n = itemsOf(data).length;
     if (n === 0) continue;
     const m = (data.manifestId as string) || '(unknown)';
@@ -427,7 +428,7 @@ export async function listAnnotationsByManifests(
       .get();
 
     const items = snapshot.docs.flatMap((doc) => {
-      const data = doc.data() as FirebaseFirestore.DocumentData;
+      const data = doc.data() as DocumentData;
       return itemsOf(data).map((it) => serializeItem(it, data));
     });
     result.push({ manifestId, items });

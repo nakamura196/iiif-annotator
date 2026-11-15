@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'crypto';
 import { getAdminFirestore } from './firebase-admin';
 import { ApiKeyDocument, ApiKeyValidationResult } from '@/types/apiKey';
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp } from '@/lib/firestore-rest';
 
 const API_KEYS_COLLECTION = 'api_keys';
 

@@ -1,4 +1,4 @@
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp } from '@/lib/firestore-rest';
 
 export interface ApiKeyDocument {
   keyHash: string;

@@ -56,9 +56,9 @@ export function OCRProcessor({ isOpen, onClose, imageUrl, canvasWidth, canvasHei
       try {
         const ocrInstance = new NDLKotenOCR();
 
-        // Use models from public directory for Vercel deployment
+        // Models are served from jsDelivr (see NEXT_PUBLIC_OCR_MODEL_BASE in next.config.ts).
         await ocrInstance.init({
-          modelPath: "/models/",
+          modelPath: process.env.NEXT_PUBLIC_OCR_MODEL_BASE,
           progressCallback: () => {
             // Progress callback if needed
           }

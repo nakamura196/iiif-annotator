@@ -5,7 +5,7 @@ const eslintConfig = [
   ...nextConfig,
   ...nextTypeScriptConfig,
   {
-    ignores: ["src/lib/ocr/**", "public/models/**", "scripts/**"],
+    ignores: ["src/lib/ocr/**", "public/models/**", "scripts/**", ".open-next/**", ".wrangler/**"],
   },
   {
     rules: {
