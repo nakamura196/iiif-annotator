@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
- * 本番 (anno.ldas.jp) と旧 URL の転送を、実際に HTTP で叩いて確かめる。
- * マージ (= Vercel の本番配布) と独自ドメインの設定後に手元で実行する: npm run test:live
+ * Smoke-test the production site (anno.ldas.jp) over plain HTTP.
+ * Run by hand after a deploy: npm run test:live
+ * (For the authenticated read/write API against Firestore, see check-api.mjs.)
  *
- * 見ること:
- *   1. 新ホストの主なページが 200 で、canonical / og:url が新ホスト
- *   2. ページが読む /_next の資産、OGP 画像、robots.txt、sitemap.xml が 200
- *   3. 存在しないパスが 404、http は https へ転送
- *   4. 旧 iiif-annotator.vercel.app の画面は同じパス・クエリのまま 308 で新ホストへ
- *      (next-fb-anno.vercel.app は Vercel のドメイン設定で旧ホストへ、そこから新ホストへ)
- *   5. 旧ホストの /api は転送せず答え続ける(外部の利用者と CORS の事前確認を壊さない)
+ * Checks:
+ *   1. Main pages return 200 and their canonical / og:url point to the production host
+ *   2. /_next assets referenced by those pages, the OGP image, robots.txt and sitemap.xml return 200
+ *   3. Unknown paths return 404, and http redirects to https
+ *   4. /api answers directly (no redirect), including CORS preflight for external clients
+ *
+ * The old *.vercel.app hosts are no longer checked: the Vercel deployment is disabled
+ * (HTTP 402) since the move to Cloudflare Workers, so their redirects are gone.
  */
 const NEW = 'https://anno.ldas.jp';
-const OLD = 'https://iiif-annotator.vercel.app';
-const OLDER = 'https://next-fb-anno.vercel.app';
 
 const errors = [];
 let passed = 0;
@@ -24,65 +24,53 @@ const get = (url, opts = {}) => fetch(url, { redirect: 'manual', ...opts });
 const assets = new Set();
 for (const page of ['/', '/en', '/help', '/api-docs', '/vocabulary']) {
   const r = await get(NEW + page);
-  ok(r.status === 200, `${NEW}${page} → ${r.status} (200 のはず)`);
+  ok(r.status === 200, `${NEW}${page} → ${r.status} (expected 200)`);
   const html = await r.text();
   const og = html.match(/<meta property="og:url" content="([^"]+)"/)?.[1];
-  ok(og?.startsWith(NEW), `${page} の og:url が ${og}`);
+  ok(og?.startsWith(NEW), `${page} og:url is ${og}`);
   const ogImage = html.match(/<meta property="og:image" content="([^"]+)"/)?.[1];
-  ok(ogImage === `${NEW}/ogp.webp`, `${page} の og:image が ${ogImage}`);
-  ok(!html.includes('iiif-annotator.vercel.app'), `${page} に旧ホストの文字列が残っている`);
+  ok(ogImage === `${NEW}/ogp.webp`, `${page} og:image is ${ogImage}`);
+  ok(!html.includes('iiif-annotator.vercel.app'), `${page} still mentions the old Vercel host`);
   for (const m of html.matchAll(/(?:href|src)="(\/_next\/[^"]+)"/g)) assets.add(m[1]);
 }
-ok(assets.size > 0, '/_next の資産参照が見つからない');
+ok(assets.size > 0, 'no /_next asset references found');
 for (const path of [...assets, '/ogp.webp', '/robots.txt', '/sitemap.xml']) {
   const r = await get(NEW + path, { method: 'HEAD' });
   ok(r.status === 200, `${NEW}${path} → ${r.status}`);
 }
 {
   const txt = await (await get(NEW + '/robots.txt')).text();
-  ok(txt.includes(`Sitemap: ${NEW}/sitemap.xml`), 'robots.txt の Sitemap 行が新ホストでない');
+  ok(txt.includes(`Sitemap: ${NEW}/sitemap.xml`), 'robots.txt Sitemap line does not point to the new host');
   const xml = await (await get(NEW + '/sitemap.xml')).text();
   const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
-  ok(locs.length > 0 && locs.every((u) => u.startsWith(NEW + '/')), `sitemap の loc: ${locs.join(', ')}`);
+  ok(locs.length > 0 && locs.every((u) => u.startsWith(NEW + '/')), `sitemap locs: ${locs.join(', ')}`);
 }
 
 // 3
 {
   const r = await get(NEW + '/no-such-page');
-  ok(r.status === 404, `存在しないページが ${r.status} (404 のはず)`);
+  ok(r.status === 404, `missing page → ${r.status} (expected 404)`);
   const h = await get('http://anno.ldas.jp/help?q=1');
   const loc = h.headers.get('location');
   ok([301, 308].includes(h.status) && loc === `${NEW}/help?q=1`, `http → ${h.status} ${loc}`);
 }
 
 // 4
-const manifest = 'https://dl.ndl.go.jp/api/iiif/1288277/manifest.json';
-for (const path of ['/', '/en', '/help', '/api-docs', `/item?manifest=${encodeURIComponent(manifest)}&pos=2`, '/ogp.webp']) {
-  const r = await get(OLD + path);
-  const loc = r.headers.get('location');
-  ok(r.status === 308 && loc === NEW + path, `${OLD}${path} → ${r.status} ${loc} (308 ${NEW + path} のはず)`);
-}
 {
-  const r = await fetch(OLDER + '/help', { redirect: 'follow' });
-  ok(r.status === 200 && r.url === NEW + '/help', `${OLDER}/help → ${r.status} ${r.url} (最終的に ${NEW}/help のはず)`);
-}
-
-// 5
-for (const base of [OLD, NEW]) {
-  const r = await get(base + '/api/openapi');
-  ok(r.status === 200, `${base}/api/openapi → ${r.status} (200 のはず、転送しない)`);
-  const a = await get(base + '/api/annotations');
-  ok(a.status !== 308 && a.status !== 301 && a.status < 500, `${base}/api/annotations → ${a.status} (転送もエラーもしないはず)`);
-  const p = await get(base + '/api/annotations', {
+  const r = await get(NEW + '/api/openapi');
+  ok(r.status === 200, `${NEW}/api/openapi → ${r.status} (expected 200)`);
+  const a = await get(NEW + '/api/annotations');
+  ok(a.status !== 308 && a.status !== 301 && a.status < 500, `${NEW}/api/annotations → ${a.status} (expected no redirect or error)`);
+  const p = await get(NEW + '/api/annotations', {
     method: 'OPTIONS',
     headers: { Origin: 'https://example.org', 'Access-Control-Request-Method': 'GET' },
   });
-  ok(p.status < 300, `${base}/api/annotations の preflight → ${p.status}`);
+  ok(p.status < 300, `${NEW}/api/annotations preflight → ${p.status}`);
 }
 
 if (errors.length) {
-  console.error(`NG: ${errors.length} 件 (OK ${passed} 件)`);
+  console.error(`NG: ${errors.length} (OK: ${passed})`);
   for (const e of errors) console.error('  ' + e);
   process.exit(1);
 }
-console.log(`OK: ${passed} 件`);
+console.log(`OK: ${passed}`);

@@ -1,14 +1,27 @@
 import type { NextConfig } from "next";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import createNextIntlPlugin from "next-intl/plugin";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const webpack = require("webpack");
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
+// The OCR models (36-38 MiB each) exceed Cloudflare Workers' 25 MiB per-asset limit, so the
+// browser loads them from jsDelivr, pinned to the installed package version.
+// (The package's "exports" does not expose package.json, so read it from disk.)
+const ocrVersion: string = JSON.parse(
+  readFileSync(join(process.cwd(), "node_modules/@nakamura196/ndl-koten-ocr-web/package.json"), "utf8")
+).version;
+const ocrModelBase = `https://cdn.jsdelivr.net/npm/@nakamura196/ndl-koten-ocr-web@${ocrVersion}/models/`;
+
 const nextConfig: NextConfig = {
   /* config options here */
   // trailingSlash: true,
   transpilePackages: ["@nakamura196/react-ui"],
+  env: {
+    NEXT_PUBLIC_OCR_MODEL_BASE: process.env.NEXT_PUBLIC_OCR_MODEL_BASE || ocrModelBase,
+  },
   webpack: (config, { isServer }) => {
     // Add support for WebAssembly
     config.experiments = {

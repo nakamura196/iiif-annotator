@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack --port 3111",
-    "prebuild": "mkdir -p public/models public/config && cp -r node_modules/@nakamura196/ndl-koten-ocr-web/models/* public/models/ && cp node_modules/@nakamura196/ndl-koten-ocr-web/models/NDLmoji.yaml public/config/",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
@@ -13,7 +12,11 @@
     "test:watch": "vitest",
     "dev:op": "op run --env-file=.env.local -- npm run dev",
     "start:op": "op run --env-file=.env.local -- npm run start",
-    "test:live": "node scripts/check-live.mjs"
+    "test:live": "node scripts/check-live.mjs",
+    "test:api": "op run --env-file=.env.local -- node scripts/check-api.mjs",
+    "build:cf": "opennextjs-cloudflare build",
+    "preview:cf": "opennextjs-cloudflare build && op run --env-file=.env.local -- env CLOUDFLARE_INCLUDE_PROCESS_ENV=true wrangler dev",
+    "deploy:cf": "opennextjs-cloudflare build && wrangler deploy"
   },
   "dependencies": {
     "@annotorious/annotorious": "3.7.4",
@@ -30,7 +33,6 @@
     "ckeditor5": "^48.2.0",
     "ckeditor5-premium-features": "^48.2.0",
     "firebase": "^11.10.0",
-    "firebase-admin": "^13.6.0",
     "js-yaml": "^4.3.2",
     "lucide-react": "^0.513.0",
     "next": "^16.4.3",
@@ -49,6 +51,7 @@
       "@aws-sdk/client-bedrock-runtime": "^3.894.0"
     },
     "protobufjs": ">=8.8.0",
+    "glob": ">=14.0.2",
     "fast-xml-parser": ">=5.6.1",
     "flatted": ">=3.4.2",
     "node-forge": ">=1.4.0",
@@ -71,6 +74,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
+    "@opennextjs/cloudflare": "1.20.15",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.12",
     "@tailwindcss/typography": "^0.5.19",
@@ -84,9 +88,11 @@
     "@vitejs/plugin-react": "^5.2.0",
     "eslint": "^9.34.0",
     "eslint-config-next": "^16.1.6",
+    "firebase-admin": "^13.6.0",
     "jsdom": "^26.1.0",
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2",
-    "vitest": "^4.1.12"
+    "vitest": "^4.1.12",
+    "wrangler": "4.162.0"
   }
 }

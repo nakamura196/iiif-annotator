@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "iiif-annotator",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "routes": [{ "pattern": "anno.ldas.jp", "custom_domain": true }],
+  // Functions serialized into inline <script> (e.g. the theme bootstrap) must not
+  // reference esbuild's __name helper, which only exists inside the worker bundle.
+  "keep_names": false,
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true }
+}
